@@ -1,0 +1,131 @@
+import com.amazonaws.kinesisvideo.parser.mkv.Frame;
+import com.amazonaws.kinesisvideo.parser.mkv.FrameProcessException;
+import com.amazonaws.kinesisvideo.parser.utilities.FragmentMetadata;
+import com.amazonaws.kinesisvideo.parser.utilities.FragmentMetadataVisitor;
+import com.amazonaws.kinesisvideo.parser.utilities.FrameVisitor;
+import com.amazonaws.kinesisvideo.parser.utilities.MkvTrackMetadata;
+import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
+import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync;
+import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsyncClient;
+import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsyncClientBuilder;
+import com.amazonaws.services.cloudwatch.model.Dimension;
+import com.amazonaws.services.cloudwatch.model.MetricDatum;
+import com.amazonaws.services.cloudwatch.model.PutMetricDataRequest;
+import com.amazonaws.services.cloudwatch.model.PutMetricDataResult;
+import com.amazonaws.services.cloudwatch.model.StandardUnit;
+import com.amazonaws.util.BinaryUtils;
+import com.google.common.primitives.Ints;
+import com.google.common.primitives.Longs;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.zip.CRC32;
+
+public class CanaryFrameProcessor implements FrameVisitor.FrameProcessor {
+    int lastFrameIndex = -1;
+    final AmazonCloudWatchAsync cwClient;
+    final Dimension dimension = new Dimension()
+            .withName("KinesisVideoProducerSDK")
+            .withValue("Producer");
+
+    public CanaryFrameProcessor(AmazonCloudWatchAsync cwClient) {
+        this.cwClient = cwClient;
+    }
+
+    @Override
+    public void process(Frame frame, MkvTrackMetadata trackMetadata, Optional<FragmentMetadata> fragmentMetadata, Optional<FragmentMetadataVisitor.MkvTagProcessor> tagProcessor) throws FrameProcessException {
+        int frameTimeDelta = frame.getTimeCode();
+        long fragmentStartTime = fragmentMetadata.get().getProducerSideTimestampMillis();
+        byte[] data = new byte[frame.getFrameData().remaining()];
+        int offset = 0;
+        frame.getFrameData().get(data);
+        byte[] timeData = new byte[Long.BYTES];
+
+        System.arraycopy(data, offset, timeData, 0, timeData.length);
+        offset += timeData.length;
+        long frameTimeInsideData = Longs.fromByteArray(timeData);
+
+        byte[] indexData = new byte[Integer.BYTES];
+        System.arraycopy(data, offset, indexData, 0, indexData.length);
+        offset += indexData.length;
+        int frameIndex = Ints.fromByteArray(indexData);
+
+        byte[] sizeData = new byte[Integer.BYTES];
+        System.arraycopy(data, offset, sizeData, 0, sizeData.length);
+        offset += sizeData.length;
+        int frameSize = Ints.fromByteArray(sizeData);
+
+        List<MetricDatum> datumList = new ArrayList<>();
+        // frameSize == buffer size - extra canary metadata size
+        MetricDatum datum = new MetricDatum()
+                .withMetricName("FrameSizeMatch")
+                .withUnit(StandardUnit.None)
+                .withValue(frameSize == data.length ? 1.0 : 0)
+                .withDimensions(dimension);
+        datumList.add(datum);
+        System.out.println("frame " + frameSize + " data length " + data.length);
+
+        byte[] crcData = new byte[Long.BYTES];
+        System.arraycopy(data, offset, crcData, 0, crcData.length);
+        Arrays.fill(data, offset, offset + crcData.length, (byte) 0);
+        offset += crcData.length;
+        long crcValue = Longs.fromByteArray(crcData);
+        CRC32 crc32 = new CRC32();
+        crc32.update(data);
+
+        System.out.println("timestamp " + frameTimeInsideData + " crcValue " + crcValue + " crc32.getValue " + crc32.getValue());
+
+        datum = new MetricDatum()
+                .withMetricName("FrameDataMatches")
+                .withUnit(StandardUnit.None)
+                .withValue(crc32.getValue() == crcValue ? 1.0 : 0)
+                .withDimensions(dimension);
+        datumList.add(datum);
+
+
+        // frameTimestampInsideData == producerTimestamp + frame timecode
+        datum = new MetricDatum()
+                .withMetricName("FrameTimeMatchesProducerTimestamp")
+                .withUnit(StandardUnit.None)
+                .withValue(frameTimeInsideData == fragmentStartTime + frameTimeDelta ? 1.0 : 0)
+                .withDimensions(dimension);
+        datumList.add(datum);
+
+        // frameIndex == lastFrameIndex + 1 except lastFrameIndex is not initialized
+        if (lastFrameIndex >= 0) {
+            datum = new MetricDatum()
+                    .withMetricName("FrameDropped")
+                    .withUnit(StandardUnit.None)
+                    .withValue(frameIndex != lastFrameIndex + 1 ? 1.0 : 0)
+                    .withDimensions(dimension);
+            datumList.add(datum);
+        }
+        lastFrameIndex = frameIndex;
+
+        // E2E frame latency = currentTime - frameTimeInsideData
+        datum = new MetricDatum()
+                .withMetricName("EndToEndFrameLatency")
+                .withUnit(StandardUnit.Milliseconds)
+                .withValue((double) System.currentTimeMillis() - frameTimeInsideData)
+                .withDimensions(dimension);
+        datumList.add(datum);
+
+        sendMetrics(datumList);
+    }
+
+    @Override
+    public void close() {
+
+    }
+
+    private void sendMetrics(List<MetricDatum> datumList) {
+        PutMetricDataRequest request = new PutMetricDataRequest()
+                .withNamespace("KinesisVideoSDKCanaryConsumer")
+                .withMetricData(datumList);
+        cwClient.putMetricDataAsync(request);
+        //FIXME verify result of putting to cloudwatch
+    }
+}

@@ -1,25 +1,21 @@
+package com.amazon.kinesis.video.canary.consumer;
+
 import com.amazonaws.kinesisvideo.parser.mkv.Frame;
 import com.amazonaws.kinesisvideo.parser.mkv.FrameProcessException;
 import com.amazonaws.kinesisvideo.parser.utilities.FragmentMetadata;
 import com.amazonaws.kinesisvideo.parser.utilities.FragmentMetadataVisitor;
 import com.amazonaws.kinesisvideo.parser.utilities.FrameVisitor;
 import com.amazonaws.kinesisvideo.parser.utilities.MkvTrackMetadata;
-import com.amazonaws.services.cloudwatch.AmazonCloudWatch;
 import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsync;
-import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsyncClient;
-import com.amazonaws.services.cloudwatch.AmazonCloudWatchAsyncClientBuilder;
 import com.amazonaws.services.cloudwatch.model.Dimension;
 import com.amazonaws.services.cloudwatch.model.MetricDatum;
 import com.amazonaws.services.cloudwatch.model.PutMetricDataRequest;
-import com.amazonaws.services.cloudwatch.model.PutMetricDataResult;
 import com.amazonaws.services.cloudwatch.model.StandardUnit;
-import com.amazonaws.util.BinaryUtils;
 import com.google.common.primitives.Ints;
 import com.google.common.primitives.Longs;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.zip.CRC32;
@@ -66,7 +62,6 @@ public class CanaryFrameProcessor implements FrameVisitor.FrameProcessor {
                 .withValue(frameSize == data.length ? 1.0 : 0)
                 .withDimensions(dimension);
         datumList.add(datum);
-        System.out.println("frame " + frameSize + " data length " + data.length);
 
         byte[] crcData = new byte[Long.BYTES];
         System.arraycopy(data, offset, crcData, 0, crcData.length);
@@ -75,8 +70,6 @@ public class CanaryFrameProcessor implements FrameVisitor.FrameProcessor {
         long crcValue = Longs.fromByteArray(crcData);
         CRC32 crc32 = new CRC32();
         crc32.update(data);
-
-        System.out.println("timestamp " + frameTimeInsideData + " crcValue " + crcValue + " crc32.getValue " + crc32.getValue());
 
         datum = new MetricDatum()
                 .withMetricName("FrameDataMatches")

@@ -50,7 +50,7 @@ public class ProducerSdkCanaryConsumer {
                     @Override
                     public void process(InputStream inputStream, FragmentMetadataCallback fragmentMetadataCallback) throws MkvElementVisitException, IOException {
                         processWithFragmentEndCallbacks(inputStream, fragmentMetadataCallback,
-                                FrameVisitor.create(new CanaryFrameProcessor(amazonCloudWatch),
+                                FrameVisitor.create(new CanaryFrameProcessor(amazonCloudWatch, streamName),
                                         Optional.of(new FragmentMetadataVisitor.BasicMkvTagProcessor())));
                     }
                 };

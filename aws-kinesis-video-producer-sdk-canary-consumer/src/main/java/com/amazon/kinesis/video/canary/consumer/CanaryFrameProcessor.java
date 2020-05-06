@@ -23,12 +23,13 @@ import java.util.zip.CRC32;
 public class CanaryFrameProcessor implements FrameVisitor.FrameProcessor {
     int lastFrameIndex = -1;
     final AmazonCloudWatchAsync cwClient;
-    final Dimension dimension = new Dimension()
-            .withName("KinesisVideoProducerSDK")
-            .withValue("Producer");
+    final Dimension dimension;
 
-    public CanaryFrameProcessor(AmazonCloudWatchAsync cwClient) {
+    public CanaryFrameProcessor(AmazonCloudWatchAsync cwClient, String streamName) {
         this.cwClient = cwClient;
+        dimension = new Dimension()
+                .withName(streamName)
+                .withValue("Consumer");
     }
 
     @Override
@@ -116,7 +117,7 @@ public class CanaryFrameProcessor implements FrameVisitor.FrameProcessor {
 
     private void sendMetrics(List<MetricDatum> datumList) {
         PutMetricDataRequest request = new PutMetricDataRequest()
-                .withNamespace("KinesisVideoSDKCanaryConsumer")
+                .withNamespace("KinesisVideoSDKCanary")
                 .withMetricData(datumList);
         cwClient.putMetricDataAsync(request);
         //FIXME verify result of putting to cloudwatch

@@ -10,8 +10,6 @@ Shared include file for the samples
 extern "C" {
 #endif
 
-#include <com/amazonaws/kinesis/video/webrtcclient/Include.h>
-
 #define NUMBER_OF_H264_FRAME_FILES               1500
 #define NUMBER_OF_OPUS_FRAME_FILES               618
 #define DEFAULT_FPS_VALUE                        25
@@ -94,7 +92,6 @@ struct __SampleStreamingSession {
     CHAR peerId[MAX_SIGNALING_CLIENT_ID_LEN + 1];
     TID receiveAudioVideoSenderTid;
     UINT64 firstSdpMsgReceiveTime;
-    UINT64 startHolePunching;
 
     // this is called when the SampleStreamingSession is being freed
     StreamSessionShutdownCallback shutdownCallback;

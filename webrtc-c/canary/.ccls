@@ -1,0 +1,2 @@
+%compile_commands.json
+%h %hpp --include=/Users/lukasman/Documents/awslabs/amazon-kinesis-video-streams-demos/webrtc-c/canary/src/Include_i.h

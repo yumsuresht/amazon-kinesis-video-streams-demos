@@ -1,0 +1,6 @@
+1. Init AWS SDK
+2. Init KVS
+2. Create WebRTC
+    1. Create Cloudwatch
+    2. Create Signaling
+    3. Create PeerConnection

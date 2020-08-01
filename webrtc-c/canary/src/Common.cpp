@@ -1,5 +1,5 @@
 #define LOG_CLASS "WebRtcSamples"
-#include "Samples.h"
+#include "Include_i.h"
 
 PSampleConfiguration gSampleConfiguration = NULL;
 
@@ -34,13 +34,6 @@ VOID onConnectionStateChange(UINT64 customData, RTC_PEER_CONNECTION_STATE newSta
     PSampleStreamingSession pSampleStreamingSession = (PSampleStreamingSession) customData;
 
     DLOGI("New connection state %u", newState);
-
-    if (newState == RTC_PEER_CONNECTION_STATE_CONNECTING) {
-        pSampleStreamingSession->startHolePunching = GETTIME();
-    } else if (newState == RTC_PEER_CONNECTION_STATE_CONNECTED) {
-        printf("ICE HOLE PUNCHING DELAY: %lf ms\n",
-               (DOUBLE)(GETTIME() - pSampleStreamingSession->startHolePunching) / HUNDREDS_OF_NANOS_IN_A_MILLISECOND);
-    }
 
     if (newState == RTC_PEER_CONNECTION_STATE_FAILED || newState == RTC_PEER_CONNECTION_STATE_CLOSED ||
         newState == RTC_PEER_CONNECTION_STATE_DISCONNECTED) {
@@ -652,7 +645,7 @@ STATUS createSampleConfiguration(PCHAR channelName, SIGNALING_CHANNEL_ROLE_TYPE 
         pSampleConfiguration->enableFileLogging = TRUE;
     }
     if ((pSampleConfiguration->channelInfo.pRegion = getenv(DEFAULT_REGION_ENV_VAR)) == NULL) {
-        pSampleConfiguration->channelInfo.pRegion = DEFAULT_AWS_REGION;
+        pSampleConfiguration->channelInfo.pRegion = (PCHAR) DEFAULT_AWS_REGION;
     }
 
     CHK_STATUS(lookForSslCert(&pSampleConfiguration));

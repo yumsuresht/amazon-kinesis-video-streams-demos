@@ -22,23 +22,22 @@ BOOL getenvBool(CHAR const* pKey)
     pValue = getenv(pKey);
     if (pValue == NULL) {
         DLOGW("%s is not set, defaulting to false", pKey);
-    }
-
-    if (STRCMPI(pValue, "on") == 0 || STRCMPI(pValue, "true") == 0) {
+    } else if (STRCMPI(pValue, "on") == 0 || STRCMPI(pValue, "true") == 0) {
         return TRUE;
     }
 
     return FALSE;
 }
 
-STATUS initializeConfig(INT32 argc, PCHAR argv[], Canary::PConfig pConfig)
+STATUS Config::init(INT32 argc, PCHAR argv[], Canary::PConfig pConfig)
 {
     // TODO: Probably also support command line args to fill the config
     UNUSED_PARAM(argc);
     UNUSED_PARAM(argv);
 
     STATUS retStatus = STATUS_SUCCESS;
-    PCHAR pLogLevel, pLogGroupName, pLogStreamName;
+    PCHAR pLogLevel, pLogStreamName;
+    const CHAR* pLogGroupName;
 
     CHK(pConfig != NULL, STATUS_NULL_ARG);
 
@@ -63,15 +62,15 @@ STATUS initializeConfig(INT32 argc, PCHAR argv[], Canary::PConfig pConfig)
         pConfig->logLevel = LOG_LEVEL_WARN;
     }
 
-    // CHK_STATUS(mustenv(CANARY_LOG_GROUP_NAME_ENV_VAR, &pLogGroupName));
+    CHK_STATUS(mustenv(CANARY_LOG_GROUP_NAME_ENV_VAR, &pLogGroupName));
     STRNCPY(pConfig->pLogGroupName, pLogGroupName, ARRAY_SIZE(pConfig->pLogGroupName) - 1);
 
     pLogStreamName = getenv(CANARY_LOG_STREAM_NAME_ENV_VAR);
     if (pLogStreamName != NULL) {
         STRNCPY(pConfig->pLogStreamName, pLogStreamName, ARRAY_SIZE(pConfig->pLogStreamName) - 1);
     } else {
-        SNPRINTF(pConfig->pLogStreamName, ARRAY_SIZE(pConfig->pLogStreamName) - 1, "canary-%s-%s-log", pConfig->pChannelName,
-                 pConfig->isMaster ? "master" : "viewer");
+        SNPRINTF(pConfig->pLogStreamName, ARRAY_SIZE(pConfig->pLogStreamName) - 1, "%s-%s-%llu", pConfig->pChannelName,
+                 pConfig->isMaster ? "master" : "viewer", GETTIME() / HUNDREDS_OF_NANOS_IN_A_MILLISECOND);
     }
 
 CleanUp:

@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 3.14)
 project(KVSWebRTCCanary LANGUAGES C CXX)
 
-set (CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 11)
 
 include(FetchContent)
+
+# AWS SDK options
+set(CUSTOM_MEMORY_MANAGEMENT OFF)
+set(ENABLE_TESTING OFF)
+set(BUILD_ONLY "monitoring;logs")
 
 FetchContent_Declare(
   webrtc
@@ -31,4 +36,11 @@ add_executable(
   src/Cloudwatch.cpp
   src/Common.cpp
   src/Master.cpp)
-target_link_libraries(kvsWebrtcClientMaster2 kvsWebrtcClient kvsWebrtcSignalingClient kvspicUtils)
+target_link_libraries(
+  kvsWebrtcClientMaster2
+  kvsWebrtcClient
+  kvsWebrtcSignalingClient
+  kvspicUtils
+  aws-cpp-sdk-core
+  aws-cpp-sdk-monitoring
+  aws-cpp-sdk-logs)

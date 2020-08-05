@@ -33,7 +33,7 @@ VOID CloudwatchMonitoring::deinit()
 VOID CloudwatchMonitoring::push(MetricDatum datum)
 {
     Aws::CloudWatch::Model::PutMetricDataRequest cwRequest;
-    cwRequest.SetNamespace("KinesisVideoSDKCanary");
+    cwRequest.SetNamespace(DEFAULT_CLOUDWATCH_NAMESPACE);
     cwRequest.AddMetricData(datum);
 
     auto asyncHandler = [this](const Aws::CloudWatch::CloudWatchClient* cwClient, const Aws::CloudWatch::Model::PutMetricDataRequest& request,

@@ -33,6 +33,7 @@ link_directories(${webrtc_SOURCE_DIR}/open-source/lib)
 add_executable(
   kvsWebrtcClientMaster2
   src/Config.cpp
+  src/CloudwatchLogger.cpp
   src/Cloudwatch.cpp
   src/Common.cpp
   src/Master.cpp)

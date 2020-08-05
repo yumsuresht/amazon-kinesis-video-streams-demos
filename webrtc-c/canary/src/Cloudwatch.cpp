@@ -2,6 +2,11 @@
 
 namespace Canary {
 
+Cloudwatch::Cloudwatch(Canary::PConfig pConfig, ClientConfiguration* pClientConfig)
+    : pCanaryConfig(pConfig), logsClient(*pClientConfig), metricsClient(*pClientConfig)
+{
+}
+
 STATUS Cloudwatch::init(Canary::PConfig pConfig)
 {
     STATUS retStatus = STATUS_SUCCESS;
@@ -49,6 +54,17 @@ CleanUp:
     return retStatus;
 }
 
+Cloudwatch& Cloudwatch::getInstance()
+{
+    return getInstanceImpl();
+}
+
+Cloudwatch& Cloudwatch::getInstanceImpl(Canary::PConfig pConfig, ClientConfiguration* pClientConfig)
+{
+    static Cloudwatch instance{pConfig, pClientConfig};
+    return instance;
+}
+
 STATUS Cloudwatch::deinit()
 {
     STATUS retStatus = STATUS_SUCCESS;
@@ -64,11 +80,6 @@ STATUS Cloudwatch::deinit()
     }
 
     return retStatus;
-}
-
-Cloudwatch& Cloudwatch::getInstance()
-{
-    return getInstanceImpl();
 }
 
 VOID Cloudwatch::pushLog(string log)

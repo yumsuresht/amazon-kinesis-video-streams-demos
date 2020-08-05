@@ -4,6 +4,10 @@ namespace Canary {
 
 class Cloudwatch {
   public:
+    Cloudwatch() = delete;
+    Cloudwatch(Cloudwatch const&) = delete;
+    void operator=(Cloudwatch const&) = delete;
+
     static Cloudwatch& getInstance();
     static STATUS init(Canary::PConfig);
     static STATUS deinit();
@@ -13,29 +17,19 @@ class Cloudwatch {
     VOID flush(BOOL sync = FALSE);
 
   private:
-    static Cloudwatch& getInstanceImpl(Canary::PConfig pConfig = nullptr, ClientConfiguration* pClientConfig = nullptr)
-    {
-        static Cloudwatch instance{pConfig, pClientConfig};
-        return instance;
-    }
+    static Cloudwatch& getInstanceImpl(Canary::PConfig = nullptr, ClientConfiguration* = nullptr);
 
-    static VOID onPutLogEventResponseReceivedHandler(const Aws::CloudWatchLogs::CloudWatchLogsClient* cwClientLog,
-                                                     const Aws::CloudWatchLogs::Model::PutLogEventsRequest& request,
-                                                     const Aws::CloudWatchLogs::Model::PutLogEventsOutcome& outcome,
-                                                     const std::shared_ptr<const Aws::Client::AsyncCallerContext>& context);
+    Cloudwatch(Canary::PConfig, ClientConfiguration*);
 
-    Cloudwatch() = delete;
-    Cloudwatch(Canary::PConfig pConfig, ClientConfiguration* pClientConfig)
-        : pCanaryConfig(pConfig), logsClient(*pClientConfig), metricsClient(*pClientConfig)
-    {
-    }
+    static VOID onPutLogEventResponseReceivedHandler(const Aws::CloudWatchLogs::CloudWatchLogsClient*,
+                                                     const Aws::CloudWatchLogs::Model::PutLogEventsRequest&,
+                                                     const Aws::CloudWatchLogs::Model::PutLogEventsOutcome&,
+                                                     const std::shared_ptr<const Aws::Client::AsyncCallerContext>&);
 
     Canary::PConfig pCanaryConfig;
     CloudWatchLogsClient logsClient;
     CloudWatchClient metricsClient;
 
-    PutLogEventsRequest canaryPutLogEventRequest;
-    PutLogEventsResult canaryPutLogEventresult;
     Aws::Vector<InputLogEvent> logs;
     Aws::String token;
 

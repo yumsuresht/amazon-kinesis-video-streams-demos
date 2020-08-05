@@ -16,10 +16,7 @@ STATUS run(Canary::PConfig pConfig)
     auto& errDatum = instance.monitoring.errDatum;
     errDatum.SetValue(30);
     errDatum.SetUnit(Aws::CloudWatch::Model::StandardUnit::None);
-
-    for (auto i = 0; i < 300; i++) {
-        instance.monitoring.push(errDatum);
-    }
+    instance.monitoring.push(errDatum);
 
     // CleanUp:
     Canary::Cloudwatch::deinit();

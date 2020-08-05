@@ -2,11 +2,11 @@
 
 namespace Canary {
 
-CloudwatchLogger::CloudwatchLogger(PConfig pConfig, ClientConfiguration* pClientConfig) : pConfig(pConfig), client(*pClientConfig)
+CloudwatchLogs::CloudwatchLogs(PConfig pConfig, ClientConfiguration* pClientConfig) : pConfig(pConfig), client(*pClientConfig)
 {
 }
 
-STATUS CloudwatchLogger::init()
+STATUS CloudwatchLogs::init()
 {
     STATUS retStatus = STATUS_SUCCESS;
     CreateLogGroupRequest createLogGroupRequest;
@@ -32,12 +32,12 @@ CleanUp:
     return retStatus;
 }
 
-VOID CloudwatchLogger::deinit()
+VOID CloudwatchLogs::deinit()
 {
     this->flush(TRUE);
 }
 
-VOID CloudwatchLogger::push(string log)
+VOID CloudwatchLogs::push(string log)
 {
     std::lock_guard<std::recursive_mutex> lock(this->sync.mutex);
     Aws::String awsCwString(log.c_str(), log.size());
@@ -50,7 +50,7 @@ VOID CloudwatchLogger::push(string log)
     }
 }
 
-VOID CloudwatchLogger::flush(BOOL sync)
+VOID CloudwatchLogs::flush(BOOL sync)
 {
     std::unique_lock<std::recursive_mutex> lock(this->sync.mutex);
     if (this->logs.size() == 0) {

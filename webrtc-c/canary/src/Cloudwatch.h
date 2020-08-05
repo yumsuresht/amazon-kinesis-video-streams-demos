@@ -9,9 +9,9 @@ class Synchronization {
     std::condition_variable_any await;
 };
 
-class CloudwatchLogger {
+class CloudwatchLogs {
   public:
-    CloudwatchLogger(Canary::PConfig, ClientConfiguration*);
+    CloudwatchLogs(Canary::PConfig, ClientConfiguration*);
     STATUS init();
     VOID deinit();
     VOID push(string log);
@@ -25,13 +25,28 @@ class CloudwatchLogger {
     Aws::String token;
 };
 
+class CloudwatchMonitoring {
+  public:
+    CloudwatchMonitoring(Canary::PConfig, ClientConfiguration*);
+    STATUS init();
+    VOID deinit();
+    VOID push(MetricDatum);
+    MetricDatum errDatum;
+
+  private:
+    PConfig pConfig;
+    CloudWatchClient client;
+    std::atomic<UINT64> pendingMetrics;
+};
+
 class Cloudwatch {
   public:
     Cloudwatch() = delete;
     Cloudwatch(Cloudwatch const&) = delete;
     void operator=(Cloudwatch const&) = delete;
 
-    CloudwatchLogger log;
+    CloudwatchLogs logs;
+    CloudwatchMonitoring monitoring;
 
     static Cloudwatch& getInstance();
     static STATUS init(Canary::PConfig);

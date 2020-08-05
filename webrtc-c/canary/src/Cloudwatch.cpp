@@ -2,7 +2,7 @@
 
 namespace Canary {
 
-Cloudwatch::Cloudwatch(Canary::PConfig pConfig, ClientConfiguration* pClientConfig) : log(pConfig, pClientConfig)
+Cloudwatch::Cloudwatch(Canary::PConfig pConfig, ClientConfiguration* pClientConfig) : logs(pConfig, pClientConfig), monitoring(pConfig, pClientConfig)
 {
 }
 
@@ -17,11 +17,15 @@ STATUS Cloudwatch::init(Canary::PConfig pConfig)
     clientConfig.region = pConfig->pRegion;
     auto& instance = getInstanceImpl(pConfig, &clientConfig);
 
-    if (STATUS_FAILED(instance.log.init())) {
+    if (STATUS_FAILED(instance.logs.init())) {
         DLOGW("Failed to create Cloudwatch logger, fallback to local output");
     } else {
         globalCustomLogPrintFn = logger;
     }
+
+    CHK_STATUS(instance.monitoring.init());
+
+CleanUp:
 
     return retStatus;
 }
@@ -40,7 +44,8 @@ Cloudwatch& Cloudwatch::getInstanceImpl(Canary::PConfig pConfig, ClientConfigura
 VOID Cloudwatch::deinit()
 {
     auto& instance = getInstance();
-    instance.log.deinit();
+    instance.logs.deinit();
+    instance.monitoring.deinit();
 }
 
 VOID Cloudwatch::logger(UINT32 level, PCHAR tag, PCHAR fmt, ...)
@@ -61,7 +66,7 @@ VOID Cloudwatch::logger(UINT32 level, PCHAR tag, PCHAR fmt, ...)
         va_start(valist, fmt);
         vprintf(logFmtString, valist);
         va_end(valist);
-        getInstance().log.push(cwLogFmtString);
+        getInstance().logs.push(cwLogFmtString);
     }
 }
 

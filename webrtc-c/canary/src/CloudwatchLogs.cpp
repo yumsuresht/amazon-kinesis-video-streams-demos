@@ -89,11 +89,11 @@ VOID CloudwatchLogs::flush(BOOL sync)
                 this->token = outcome.GetResult().GetNextSequenceToken();
             }
 
-            this->sync.pending = TRUE;
+            this->sync.pending = FALSE;
             this->sync.await.notify_one();
         };
 
-        this->sync.pending = FALSE;
+        this->sync.pending = TRUE;
         this->client.PutLogEventsAsync(request, asyncHandler);
     } else {
         auto outcome = this->client.PutLogEvents(request);

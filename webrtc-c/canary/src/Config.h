@@ -19,6 +19,7 @@ class Config {
     const CHAR* pSecretKey;
     const CHAR* pSessionToken;
     const CHAR* pRegion;
+    const CHAR* pCertPath;
 
     // logging
     UINT32 logLevel;

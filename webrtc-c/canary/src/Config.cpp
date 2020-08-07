@@ -57,6 +57,8 @@ STATUS Config::init(INT32 argc, PCHAR argv[], Canary::PConfig pConfig)
         pConfig->pRegion = DEFAULT_AWS_REGION;
     }
 
+    CHK_STATUS(mustenv(CANARY_CERT_PATH_ENV_VAR, &pConfig->pCertPath));
+
     // Set the logger log level
     if (NULL == (pLogLevel = getenv(DEBUG_LOG_LEVEL_ENV_VAR)) || (STATUS_SUCCESS != STRTOUI32(pLogLevel, NULL, 10, &pConfig->logLevel))) {
         pConfig->logLevel = LOG_LEVEL_WARN;

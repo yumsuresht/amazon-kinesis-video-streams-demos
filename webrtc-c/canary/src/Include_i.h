@@ -12,6 +12,7 @@
 #define CANARY_USE_TURN_ENV_VAR        "CANARY_USE_TURN"
 #define CANARY_LOG_GROUP_NAME_ENV_VAR  "CANARY_LOG_GROUP_NAME"
 #define CANARY_LOG_STREAM_NAME_ENV_VAR "CANARY_LOG_STREAM_NAME"
+#define CANARY_CERT_PATH_ENV_VAR       "CANARY_CERT_PATH"
 
 #include <aws/core/Aws.h>
 #include <aws/monitoring/CloudWatchClient.h>
@@ -34,4 +35,4 @@ using namespace std;
 
 #include "Config.h"
 #include "Cloudwatch.h"
-#include "Common.h"
+#include "Peer.h"

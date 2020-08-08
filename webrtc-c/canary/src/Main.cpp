@@ -3,22 +3,18 @@
 STATUS run(Canary::PConfig pConfig)
 {
     STATUS retStatus = STATUS_SUCCESS;
-    // Canary::PCloudwatch pCw;
 
-    // CHK_STATUS(Canary::Cloudwatch::init(pConfig));
-    // CHK_STATUS(initKvsWebRtc());
-    Canary::Cloudwatch::init(pConfig);
-    initKvsWebRtc();
+    CHK_STATUS(Canary::Cloudwatch::init(pConfig));
+    CHK_STATUS(initKvsWebRtc());
 
-    DLOGE("Test log");
+    {
+        Canary::Peer peer(pConfig);
 
-    auto& instance = Canary::Cloudwatch::getInstance();
-    auto& errDatum = instance.monitoring.errDatum;
-    errDatum.SetValue(30);
-    errDatum.SetUnit(Aws::CloudWatch::Model::StandardUnit::None);
-    instance.monitoring.push(errDatum);
+        CHK_STATUS(peer.init());
+    }
 
-    // CleanUp:
+CleanUp:
+    deinitKvsWebRtc();
     Canary::Cloudwatch::deinit();
 
     return retStatus;

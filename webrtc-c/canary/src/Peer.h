@@ -6,12 +6,6 @@ typedef Peer* PPeer;
 
 class Peer {
   public:
-    Peer(const Canary::PConfig pConfig);
-    STATUS init();
-    VOID deinit();
-    STATUS connect(UINT64 duration);
-
-  private:
     class Connection {
       public:
         Connection(PPeer pPeer, std::string id);
@@ -37,8 +31,18 @@ class Peer {
         std::atomic<UINT8> workCounter;
     };
     typedef Connection* PConnection;
+    struct Callbacks {
+        std::function<STATUS(std::shared_ptr<Connection>)> onNewConnection;
+    };
 
+    Peer(const Canary::PConfig, const Callbacks&);
+    STATUS init();
+    VOID deinit();
+    STATUS connect(UINT64 duration);
+
+  private:
     const Canary::PConfig pConfig;
+    const Callbacks callbacks;
     PAwsCredentialProvider pAwsCredentialProvider;
     SIGNALING_CLIENT_HANDLE pSignalingClientHandle;
     std::vector<std::shared_ptr<Connection>> connections;

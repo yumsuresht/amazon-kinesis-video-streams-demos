@@ -2,7 +2,7 @@
 
 namespace Canary {
 
-Peer::Peer(const Canary::PConfig pConfig) : pConfig(pConfig), pAwsCredentialProvider(nullptr)
+Peer::Peer(const Canary::PConfig pConfig, const Callbacks& callbacks) : pConfig(pConfig), callbacks(callbacks), pAwsCredentialProvider(nullptr)
 {
 }
 
@@ -32,7 +32,9 @@ STATUS Peer::connect(UINT64 duration)
     STATUS retStatus = STATUS_SUCCESS;
     UNUSED_PARAM(duration);
 
-    // CleanUp:
+    CHK_STATUS(connectSignaling());
+
+CleanUp:
 
     return retStatus;
 }
@@ -87,7 +89,10 @@ STATUS Peer::connectSignaling()
                                [&](const std::shared_ptr<Connection>& c) { return c->id == msgClientId; });
 
         if (it == pPeer->connections.end()) {
-            pPeer->connections.push_back(std::make_shared<Connection>(pPeer, msgClientId));
+            auto pConnection = std::make_shared<Connection>(pPeer, msgClientId);
+            CHK_STATUS(pConnection->init());
+            CHK_STATUS(pPeer->callbacks.onNewConnection(pConnection));
+            pPeer->connections.push_back(pConnection);
             pConnection = pPeer->connections[pPeer->connections.size() - 1];
         } else {
             pConnection = *it;

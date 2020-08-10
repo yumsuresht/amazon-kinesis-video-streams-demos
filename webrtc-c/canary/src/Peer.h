@@ -46,6 +46,7 @@ class Peer {
     PAwsCredentialProvider pAwsCredentialProvider;
     SIGNALING_CLIENT_HANDLE pSignalingClientHandle;
     std::vector<std::shared_ptr<Connection>> connections;
+    std::mutex mutex;
 
     STATUS connectSignaling();
     STATUS connectICE();

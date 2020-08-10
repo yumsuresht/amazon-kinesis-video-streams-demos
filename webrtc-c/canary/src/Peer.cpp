@@ -53,6 +53,7 @@ STATUS Peer::connectSignaling()
 
     clientInfo.version = SIGNALING_CLIENT_INFO_CURRENT_VERSION;
     clientInfo.loggingLevel = pConfig->logLevel;
+    STRCPY(clientInfo.clientId, pConfig->pClientId);
 
     channelInfo.version = CHANNEL_INFO_CURRENT_VERSION;
     channelInfo.pChannelName = (PCHAR) pConfig->pChannelName;
@@ -82,6 +83,7 @@ STATUS Peer::connectSignaling()
     clientCallbacks.messageReceivedFn = [](UINT64 customData, PReceivedSignalingMessage pMsg) -> STATUS {
         STATUS retStatus = STATUS_SUCCESS;
         PPeer pPeer = (PPeer) customData;
+        std::unique_lock<std::mutex> lock(pPeer->mutex);
         std::shared_ptr<Connection> pConnection;
         std::string msgClientId(pMsg->signalingMessage.peerClientId);
 
@@ -89,15 +91,16 @@ STATUS Peer::connectSignaling()
                                [&](const std::shared_ptr<Connection>& c) { return c->id == msgClientId; });
 
         if (it == pPeer->connections.end()) {
-            auto pConnection = std::make_shared<Connection>(pPeer, msgClientId);
+            pConnection = std::make_shared<Connection>(pPeer, msgClientId);
             CHK_STATUS(pConnection->init());
             CHK_STATUS(pPeer->callbacks.onNewConnection(pConnection));
             pPeer->connections.push_back(pConnection);
-            pConnection = pPeer->connections[pPeer->connections.size() - 1];
         } else {
             pConnection = *it;
         }
 
+        DLOGD("Handling signaling message:\n%s", pMsg->signalingMessage.payload);
+        lock.unlock();
         CHK_STATUS(pConnection->handleSignalingMsg(pMsg));
 
     CleanUp:
@@ -106,6 +109,7 @@ STATUS Peer::connectSignaling()
     };
 
     CHK_STATUS(createSignalingClientSync(&clientInfo, &channelInfo, &clientCallbacks, pAwsCredentialProvider, &pSignalingClientHandle));
+    CHK_STATUS(signalingClientConnectSync(pSignalingClientHandle));
 
 CleanUp:
 

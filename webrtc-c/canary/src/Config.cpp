@@ -44,6 +44,7 @@ STATUS Config::init(INT32 argc, PCHAR argv[], Canary::PConfig pConfig)
     MEMSET(pConfig, 0, SIZEOF(Config));
 
     CHK_STATUS(mustenv(CANARY_CHANNEL_NAME_ENV_VAR, &pConfig->pChannelName));
+    CHK_STATUS(mustenv(CANARY_CLIENT_ID_ENV_VAR, &pConfig->pClientId));
     pConfig->isMaster = getenvBool(CANARY_IS_MASTER_ENV_VAR);
     /* This is ignored for master. Master can extract the info from offer. Viewer has to know if peer can trickle or
      * not ahead of time. */

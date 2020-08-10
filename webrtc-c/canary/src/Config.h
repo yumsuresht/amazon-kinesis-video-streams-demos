@@ -10,6 +10,7 @@ class Config {
     static STATUS init(INT32 argc, PCHAR argv[], PConfig);
 
     const CHAR* pChannelName;
+    const CHAR* pClientId;
     BOOL isMaster;
     BOOL trickleIce;
     BOOL useTurn;

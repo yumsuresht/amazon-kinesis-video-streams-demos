@@ -2,7 +2,8 @@
 
 namespace Canary {
 
-Peer::Connection::Connection(PPeer pPeer, std::string id) : pPeer(pPeer), id(id), iceGatheringDone(FALSE), terminated(FALSE), receivedOffer(FALSE)
+Peer::Connection::Connection(PPeer pPeer, std::string id)
+    : pPeer(pPeer), id(id), pPeerConnection(nullptr), iceGatheringDone(FALSE), terminated(FALSE), receivedOffer(FALSE)
 {
 }
 
@@ -157,7 +158,7 @@ STATUS Peer::Connection::handleSignalingMsg(PReceivedSignalingMessage pMsg)
             CHK(FALSE, retStatus);
         }
 
-        if (!receivedOffer.exchange(TRUE)) {
+        if (receivedOffer.exchange(TRUE)) {
             DLOGW("Offer already received, ignore new offer from client id %s", msg.peerClientId);
             CHK(FALSE, retStatus);
         }
@@ -227,6 +228,7 @@ STATUS Peer::Connection::handleSignalingMsg(PReceivedSignalingMessage pMsg)
     };
 
     STATUS retStatus = STATUS_SUCCESS;
+    std::lock_guard<std::mutex> lock(this->mutex);
     auto& msg = pMsg->signalingMessage;
     switch (msg.messageType) {
         case SIGNALING_MESSAGE_TYPE_OFFER:

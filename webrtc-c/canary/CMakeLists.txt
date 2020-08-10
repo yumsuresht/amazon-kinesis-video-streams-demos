@@ -37,6 +37,7 @@ add_executable(
   src/CloudwatchMonitoring.cpp
   src/Cloudwatch.cpp
   src/Peer.cpp
+  src/PeerConnection.cpp
   src/Main.cpp)
 target_link_libraries(
   kvsWebrtcClientMaster2

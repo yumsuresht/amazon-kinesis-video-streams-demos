@@ -15,6 +15,8 @@ class Peer {
     class Connection {
       public:
         Connection(PPeer pPeer, std::string id);
+        STATUS init();
+        STATUS shutdown();
 
         PPeer pPeer;
         std::string id;

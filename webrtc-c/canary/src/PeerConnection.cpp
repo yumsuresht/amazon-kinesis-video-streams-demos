@@ -250,4 +250,28 @@ CleanUp:
     return retStatus;
 }
 
+STATUS Peer::Connection::addTransceiver(RtcMediaStreamTrack& track)
+{
+    PRtcRtpTransceiver pTransceiver;
+    STATUS retStatus = STATUS_SUCCESS;
+
+    CHK_STATUS(::addTransceiver(pPeerConnection, &track, NULL, &pTransceiver));
+    transceivers.push_back(pTransceiver);
+
+CleanUp:
+
+    return retStatus;
+}
+
+STATUS Peer::Connection::addSupportedCodec(RTC_CODEC codec)
+{
+    STATUS retStatus = STATUS_SUCCESS;
+
+    CHK_STATUS(::addSupportedCodec(pPeerConnection, codec));
+
+CleanUp:
+
+    return retStatus;
+}
+
 } // namespace Canary

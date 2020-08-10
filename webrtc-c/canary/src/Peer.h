@@ -16,8 +16,10 @@ class Peer {
         std::string id;
 
         STATUS handleSignalingMsg(PReceivedSignalingMessage);
+        STATUS addTransceiver(RtcMediaStreamTrack&);
         STATUS writeFrame(PRtcRtpTransceiver, PFrame);
         const std::vector<PRtcRtpReceiver>& getTransceivers();
+        STATUS addSupportedCodec(RTC_CODEC);
 
       private:
         PRtcPeerConnection pPeerConnection;

@@ -1,13 +1,26 @@
 #include "Include_i.h"
 
+STATUS onNewConnection(std::shared_ptr<Canary::Peer::Connection>);
+STATUS run(Canary::PConfig);
+
+INT32 main(INT32 argc, CHAR* argv[])
+{
+    STATUS retStatus = STATUS_SUCCESS;
+    Canary::Config config;
+
+    Aws::SDKOptions options;
+    Aws::InitAPI(options);
+
+    CHK_STATUS(Canary::Config::init(argc, argv, &config));
+    CHK_STATUS(run(&config));
+
+CleanUp:
+    DLOGI("Exiting");
+    Aws::ShutdownAPI(options);
+}
+
 STATUS run(Canary::PConfig pConfig)
 {
-    auto onNewConnection = [](std::shared_ptr<Canary::Peer::Connection> pConnection) -> STATUS {
-        UNUSED_PARAM(pConnection);
-        DLOGI("On new connection: %s", pConnection->id.c_str());
-        return STATUS_SUCCESS;
-    };
-
     STATUS retStatus = STATUS_SUCCESS;
 
     CHK_STATUS(Canary::Cloudwatch::init(pConfig));
@@ -35,18 +48,33 @@ CleanUp:
     return retStatus;
 }
 
-INT32 main(INT32 argc, CHAR* argv[])
+STATUS onNewConnection(std::shared_ptr<Canary::Peer::Connection> pConnection)
 {
     STATUS retStatus = STATUS_SUCCESS;
-    Canary::Config config;
+    RtcMediaStreamTrack videoTrack, audioTrack;
 
-    Aws::SDKOptions options;
-    Aws::InitAPI(options);
+    MEMSET(&videoTrack, 0x00, SIZEOF(RtcMediaStreamTrack));
+    MEMSET(&audioTrack, 0x00, SIZEOF(RtcMediaStreamTrack));
 
-    CHK_STATUS(Canary::Config::init(argc, argv, &config));
-    CHK_STATUS(run(&config));
+    // Declare that we support H264,Profile=42E01F,level-asymmetry-allowed=1,packetization-mode=1 and Opus
+    CHK_STATUS(pConnection->addSupportedCodec(RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_MODE));
+    CHK_STATUS(pConnection->addSupportedCodec(RTC_CODEC_OPUS));
+
+    // Add a SendRecv Transceiver of type video
+    videoTrack.kind = MEDIA_STREAM_TRACK_KIND_VIDEO;
+    videoTrack.codec = RTC_CODEC_H264_PROFILE_42E01F_LEVEL_ASYMMETRY_ALLOWED_PACKETIZATION_MODE;
+    STRCPY(videoTrack.streamId, "myKvsVideoStream");
+    STRCPY(videoTrack.trackId, "myVideoTrack");
+    CHK_STATUS(pConnection->addTransceiver(videoTrack));
+
+    // Add a SendRecv Transceiver of type video
+    audioTrack.kind = MEDIA_STREAM_TRACK_KIND_AUDIO;
+    audioTrack.codec = RTC_CODEC_OPUS;
+    STRCPY(audioTrack.streamId, "myKvsVideoStream");
+    STRCPY(audioTrack.trackId, "myAudioTrack");
+    CHK_STATUS(pConnection->addTransceiver(audioTrack));
 
 CleanUp:
-    DLOGI("Exiting");
-    Aws::ShutdownAPI(options);
+
+    return retStatus;
 }

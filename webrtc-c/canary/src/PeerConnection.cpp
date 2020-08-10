@@ -228,7 +228,7 @@ STATUS Peer::Connection::handleSignalingMsg(PReceivedSignalingMessage pMsg)
 
     STATUS retStatus = STATUS_SUCCESS;
     auto& msg = pMsg->signalingMessage;
-    switch (pMsg->signalingMessage.messageType) {
+    switch (msg.messageType) {
         case SIGNALING_MESSAGE_TYPE_OFFER:
             CHK_STATUS(handleOffer(msg));
             break;
@@ -239,7 +239,7 @@ STATUS Peer::Connection::handleSignalingMsg(PReceivedSignalingMessage pMsg)
             CHK_STATUS(handleAnswer(msg));
             break;
         default:
-            DLOGW("Unknown message type %u", pMsg->signalingMessage.messageType);
+            DLOGW("Unknown message type %u", msg.messageType);
             break;
     }
 

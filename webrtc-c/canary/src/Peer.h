@@ -10,7 +10,7 @@ class Peer {
       public:
         Connection(PPeer pPeer, std::string id);
         STATUS init();
-        STATUS shutdown();
+        VOID shutdown();
 
         PPeer pPeer;
         std::string id;
@@ -31,7 +31,6 @@ class Peer {
         std::atomic<bool> terminated;
         std::atomic<bool> receivedOffer;
         // std::atomic<bool> receivedAnswer;
-        std::atomic<UINT8> workCounter;
     };
     typedef Connection* PConnection;
     struct Callbacks {
@@ -39,8 +38,9 @@ class Peer {
     };
 
     Peer(const Canary::PConfig, const Callbacks&);
+    ~Peer();
     STATUS init();
-    VOID deinit();
+    VOID shutdown();
     STATUS connect(UINT64 duration);
     STATUS writeFrame(PFrame, MEDIA_STREAM_TRACK_KIND);
 
@@ -54,7 +54,6 @@ class Peer {
 
     STATUS connectSignaling();
     STATUS connectICE();
-    STATUS shutdown();
 };
 
 } // namespace Canary

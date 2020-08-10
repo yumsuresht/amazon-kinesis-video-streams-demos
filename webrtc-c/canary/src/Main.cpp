@@ -4,12 +4,11 @@ STATUS onNewConnection(std::shared_ptr<Canary::Peer::Connection>);
 STATUS run(Canary::PConfig);
 VOID sendLocalFrames(Canary::PPeer, MEDIA_STREAM_TRACK_KIND, const std::string&, UINT64, UINT32);
 
-std::function<VOID(INT32)> handleShutdown;
+std::atomic<bool> terminated;
 VOID handleSignal(INT32 signal)
 {
-    if (handleShutdown != NULL) {
-        handleShutdown(signal);
-    }
+    UNUSED_PARAM(signal);
+    terminated = TRUE;
 }
 
 INT32 main(INT32 argc, CHAR* argv[])
@@ -55,10 +54,7 @@ STATUS run(Canary::PConfig pConfig)
                                 NUMBER_OF_OPUS_FRAME_FILES, SAMPLE_AUDIO_FRAME_DURATION);
         videoThread.join();
         audioThread.join();
-
-        while (1) {
-            THREAD_SLEEP(HUNDREDS_OF_NANOS_IN_A_SECOND * 5);
-        }
+        peer.shutdown();
     }
 
 CleanUp:
@@ -113,7 +109,7 @@ VOID sendLocalFrames(Canary::PPeer pPeer, MEDIA_STREAM_TRACK_KIND kind, const st
     startTime = GETTIME();
     lastFrameTime = startTime;
 
-    while (TRUE) {
+    while (!terminated.load()) {
         fileIndex = fileIndex % frameCount + 1;
         SNPRINTF(filePath, MAX_PATH_LEN, pattern.c_str(), fileIndex);
 
@@ -143,7 +139,10 @@ VOID sendLocalFrames(Canary::PPeer pPeer, MEDIA_STREAM_TRACK_KIND kind, const st
 
 CleanUp:
 
+    auto threadKind = kind == MEDIA_STREAM_TRACK_KIND_VIDEO ? "video" : "audio";
     if (STATUS_FAILED(retStatus)) {
-        DLOGE("%s thread exited with 0x%08x", kind == MEDIA_STREAM_TRACK_KIND_VIDEO ? "video" : "audio", retStatus);
+        DLOGE("%s thread exited with 0x%08x", threadKind, retStatus);
+    } else {
+        DLOGI("%s thread exited successfully");
     }
 }

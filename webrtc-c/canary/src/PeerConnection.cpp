@@ -132,6 +132,15 @@ CleanUp:
     return retStatus;
 }
 
+VOID Peer::Connection::shutdown()
+{
+    this->terminated = TRUE;
+    if (this->pPeerConnection != NULL) {
+        CHK_LOG_ERR(closePeerConnection(this->pPeerConnection));
+        CHK_LOG_ERR(freePeerConnection(&this->pPeerConnection));
+    }
+}
+
 STATUS Peer::Connection::handleSignalingMsg(PReceivedSignalingMessage pMsg)
 {
     auto awaitIceGathering = [this](PRtcSessionDescriptionInit pSDPInit) -> STATUS {

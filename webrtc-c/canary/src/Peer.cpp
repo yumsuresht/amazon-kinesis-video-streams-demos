@@ -6,6 +6,11 @@ Peer::Peer(const Canary::PConfig pConfig, const Callbacks& callbacks) : pConfig(
 {
 }
 
+Peer::~Peer()
+{
+    freeStaticCredentialProvider(&pAwsCredentialProvider);
+}
+
 STATUS Peer::init()
 {
     STATUS retStatus = STATUS_SUCCESS;
@@ -15,16 +20,17 @@ STATUS Peer::init()
 
 CleanUp:
 
-    if (STATUS_FAILED(retStatus)) {
-        deinit();
-    }
-
     return retStatus;
 }
 
-VOID Peer::deinit()
+VOID Peer::shutdown()
 {
-    freeStaticCredentialProvider(&pAwsCredentialProvider);
+    CHK_LOG_ERR(freeSignalingClient(&this->pSignalingClientHandle));
+    CHK_LOG_ERR(freeStaticCredentialProvider(&this->pAwsCredentialProvider));
+
+    for (auto& connection : this->connections) {
+        connection->shutdown();
+    }
 }
 
 STATUS Peer::connect(UINT64 duration)
@@ -112,17 +118,6 @@ STATUS Peer::connectSignaling()
     CHK_STATUS(signalingClientConnectSync(pSignalingClientHandle));
 
 CleanUp:
-
-    return retStatus;
-}
-
-STATUS Peer::shutdown()
-{
-    STATUS retStatus = STATUS_SUCCESS;
-
-    // TODO
-
-    // CleanUp:
 
     return retStatus;
 }

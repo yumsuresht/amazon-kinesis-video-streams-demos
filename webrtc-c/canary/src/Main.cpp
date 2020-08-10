@@ -143,6 +143,6 @@ CleanUp:
     if (STATUS_FAILED(retStatus)) {
         DLOGE("%s thread exited with 0x%08x", threadKind, retStatus);
     } else {
-        DLOGI("%s thread exited successfully");
+        DLOGI("%s thread exited successfully", threadKind);
     }
 }

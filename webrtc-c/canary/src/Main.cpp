@@ -51,7 +51,10 @@ STATUS run(Canary::PConfig pConfig)
 
         std::thread videoThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_VIDEO, "./h264SampleFrames/frame-%04d.h264",
                                 NUMBER_OF_H264_FRAME_FILES, SAMPLE_VIDEO_FRAME_DURATION);
+        std::thread audioThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_AUDIO, "./opusSampleFrames/sample-%03d.opus",
+                                NUMBER_OF_OPUS_FRAME_FILES, SAMPLE_AUDIO_FRAME_DURATION);
         videoThread.join();
+        audioThread.join();
 
         while (1) {
             THREAD_SLEEP(HUNDREDS_OF_NANOS_IN_A_SECOND * 5);

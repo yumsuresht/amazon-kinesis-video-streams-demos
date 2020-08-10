@@ -18,12 +18,13 @@ class Peer {
         STATUS handleSignalingMsg(PReceivedSignalingMessage);
         STATUS addTransceiver(RtcMediaStreamTrack&);
         STATUS writeFrame(PRtcRtpTransceiver, PFrame);
-        const std::vector<PRtcRtpReceiver>& getTransceivers();
+        const std::vector<PRtcRtpTransceiver>& getTransceivers(MEDIA_STREAM_TRACK_KIND);
         STATUS addSupportedCodec(RTC_CODEC);
 
       private:
         PRtcPeerConnection pPeerConnection;
-        std::vector<PRtcRtpTransceiver> transceivers;
+        std::vector<PRtcRtpTransceiver> audioTransceivers;
+        std::vector<PRtcRtpTransceiver> videoTransceivers;
         std::mutex mutex;
         std::condition_variable cvar;
         std::atomic<bool> iceGatheringDone;
@@ -41,6 +42,7 @@ class Peer {
     STATUS init();
     VOID deinit();
     STATUS connect(UINT64 duration);
+    STATUS writeFrame(PFrame, MEDIA_STREAM_TRACK_KIND);
 
   private:
     const Canary::PConfig pConfig;

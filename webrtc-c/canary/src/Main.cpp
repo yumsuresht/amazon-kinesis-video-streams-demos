@@ -2,9 +2,22 @@
 
 STATUS onNewConnection(std::shared_ptr<Canary::Peer::Connection>);
 STATUS run(Canary::PConfig);
+VOID sendLocalFrames(Canary::PPeer, MEDIA_STREAM_TRACK_KIND, const std::string&, UINT64, UINT32);
+
+std::function<VOID(INT32)> handleShutdown;
+VOID handleSignal(INT32 signal)
+{
+    if (handleShutdown != NULL) {
+        handleShutdown(signal);
+    }
+}
 
 INT32 main(INT32 argc, CHAR* argv[])
 {
+#ifndef _WIN32
+    signal(SIGINT, handleSignal);
+#endif
+
     STATUS retStatus = STATUS_SUCCESS;
     Canary::Config config;
 
@@ -35,6 +48,10 @@ STATUS run(Canary::PConfig pConfig)
 
         CHK_STATUS(peer.init());
         CHK_STATUS(peer.connect(0));
+
+        std::thread videoThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_VIDEO, "./h264SampleFrames/frame-%04d.h264",
+                                NUMBER_OF_H264_FRAME_FILES, SAMPLE_VIDEO_FRAME_DURATION);
+        videoThread.join();
 
         while (1) {
             THREAD_SLEEP(HUNDREDS_OF_NANOS_IN_A_SECOND * 5);
@@ -77,4 +94,53 @@ STATUS onNewConnection(std::shared_ptr<Canary::Peer::Connection> pConnection)
 CleanUp:
 
     return retStatus;
+}
+
+VOID sendLocalFrames(Canary::PPeer pPeer, MEDIA_STREAM_TRACK_KIND kind, const std::string& pattern, UINT64 frameCount, UINT32 frameDuration)
+{
+    STATUS retStatus = STATUS_SUCCESS;
+    Frame frame;
+    UINT64 fileIndex = 0, frameSize;
+    CHAR filePath[MAX_PATH_LEN + 1];
+    UINT64 startTime, lastFrameTime, elapsed;
+
+    frame.frameData = NULL;
+    frame.size = 0;
+    frame.presentationTs = 0;
+    startTime = GETTIME();
+    lastFrameTime = startTime;
+
+    while (TRUE) {
+        fileIndex = fileIndex % frameCount + 1;
+        SNPRINTF(filePath, MAX_PATH_LEN, pattern.c_str(), fileIndex);
+
+        CHK_STATUS(readFile(filePath, TRUE, NULL, &frameSize));
+
+        // Re-alloc if needed
+        if (frameSize > frame.size) {
+            frame.frameData = (PBYTE) REALLOC(frame.frameData, frameSize);
+            CHK_ERR(frame.frameData != NULL, STATUS_NOT_ENOUGH_MEMORY, "Failed to realloc media buffer");
+        }
+        frame.size = (UINT32) frameSize;
+
+        CHK_STATUS(readFile(filePath, TRUE, frame.frameData, &frameSize));
+
+        frame.presentationTs += frameDuration;
+
+        pPeer->writeFrame(&frame, kind);
+
+        // Adjust sleep in the case the sleep itself and writeFrame take longer than expected. Since sleep makes sure that the thread
+        // will be paused at least until the given amount, we can assume that there's no too early frame scenario.
+        // Also, it's very unlikely to have a delay greater than SAMPLE_VIDEO_FRAME_DURATION, so the logic assumes that this is always
+        // true for simplicity.
+        elapsed = lastFrameTime - startTime;
+        THREAD_SLEEP(frameDuration - elapsed % frameDuration);
+        lastFrameTime = GETTIME();
+    }
+
+CleanUp:
+
+    if (STATUS_FAILED(retStatus)) {
+        DLOGE("%s thread exited with 0x%08x", kind == MEDIA_STREAM_TRACK_KIND_VIDEO ? "video" : "audio", retStatus);
+    }
 }

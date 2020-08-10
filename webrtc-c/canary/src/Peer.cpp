@@ -127,4 +127,19 @@ STATUS Peer::shutdown()
     return retStatus;
 }
 
+STATUS Peer::writeFrame(PFrame pFrame, MEDIA_STREAM_TRACK_KIND kind)
+{
+    STATUS retStatus = STATUS_SUCCESS;
+
+    for (auto& connection : this->connections) {
+        for (auto& transceiver : connection->getTransceivers(kind)) {
+            CHK_STATUS(connection->writeFrame(transceiver, pFrame));
+        }
+    }
+
+CleanUp:
+
+    return retStatus;
+}
+
 } // namespace Canary

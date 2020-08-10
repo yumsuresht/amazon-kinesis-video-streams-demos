@@ -256,7 +256,11 @@ STATUS Peer::Connection::addTransceiver(RtcMediaStreamTrack& track)
     STATUS retStatus = STATUS_SUCCESS;
 
     CHK_STATUS(::addTransceiver(pPeerConnection, &track, NULL, &pTransceiver));
-    transceivers.push_back(pTransceiver);
+    if (track.kind == MEDIA_STREAM_TRACK_KIND_VIDEO) {
+        videoTransceivers.push_back(pTransceiver);
+    } else {
+        audioTransceivers.push_back(pTransceiver);
+    }
 
 CleanUp:
 
@@ -268,6 +272,22 @@ STATUS Peer::Connection::addSupportedCodec(RTC_CODEC codec)
     STATUS retStatus = STATUS_SUCCESS;
 
     CHK_STATUS(::addSupportedCodec(pPeerConnection, codec));
+
+CleanUp:
+
+    return retStatus;
+}
+
+const std::vector<PRtcRtpTransceiver>& Peer::Connection::getTransceivers(MEDIA_STREAM_TRACK_KIND kind)
+{
+    return kind == MEDIA_STREAM_TRACK_KIND_VIDEO ? this->videoTransceivers : this->audioTransceivers;
+}
+
+STATUS Peer::Connection::writeFrame(PRtcRtpTransceiver pTransceiver, PFrame pFrame)
+{
+    STATUS retStatus = STATUS_SUCCESS;
+
+    CHK_STATUS(::writeFrame(pTransceiver, pFrame));
 
 CleanUp:
 

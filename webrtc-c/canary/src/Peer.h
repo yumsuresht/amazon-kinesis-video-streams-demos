@@ -8,7 +8,7 @@ class Peer {
   public:
     class Connection {
       public:
-        Connection(PPeer pPeer, std::string id);
+        Connection(PPeer, std::string, std::function<VOID()>);
         STATUS init();
         VOID shutdown();
 
@@ -19,10 +19,12 @@ class Peer {
         STATUS addTransceiver(RtcMediaStreamTrack&);
         STATUS writeFrame(PRtcRtpTransceiver, PFrame);
         const std::vector<PRtcRtpTransceiver>& getTransceivers(MEDIA_STREAM_TRACK_KIND);
+        BOOL isTerminated();
         STATUS addSupportedCodec(RTC_CODEC);
 
       private:
         PRtcPeerConnection pPeerConnection;
+        std::function<VOID()> onDisconnected;
         std::vector<PRtcRtpTransceiver> audioTransceivers;
         std::vector<PRtcRtpTransceiver> videoTransceivers;
         std::mutex mutex;
@@ -42,7 +44,7 @@ class Peer {
     STATUS init();
     VOID shutdown();
     STATUS connect(UINT64 duration);
-    STATUS writeFrame(PFrame, MEDIA_STREAM_TRACK_KIND);
+    VOID writeFrame(PFrame, MEDIA_STREAM_TRACK_KIND);
 
   private:
     const Canary::PConfig pConfig;
@@ -50,10 +52,14 @@ class Peer {
     PAwsCredentialProvider pAwsCredentialProvider;
     SIGNALING_CLIENT_HANDLE pSignalingClientHandle;
     std::vector<std::shared_ptr<Connection>> connections;
+    BOOL terminated;
     std::mutex mutex;
+    std::atomic<UINT32> connectionsReaderCount;
+    std::atomic<bool> updatingConnections;
 
     STATUS connectSignaling();
     STATUS connectICE();
+    VOID checkTerminatedConnections();
 };
 
 } // namespace Canary

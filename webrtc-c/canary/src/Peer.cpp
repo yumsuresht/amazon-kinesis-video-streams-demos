@@ -2,7 +2,8 @@
 
 namespace Canary {
 
-Peer::Peer(const Canary::PConfig pConfig, const Callbacks& callbacks) : pConfig(pConfig), callbacks(callbacks), pAwsCredentialProvider(nullptr)
+Peer::Peer(const Canary::PConfig pConfig, const Callbacks& callbacks)
+    : pConfig(pConfig), callbacks(callbacks), pAwsCredentialProvider(nullptr), terminated(FALSE)
 {
 }
 
@@ -25,12 +26,14 @@ CleanUp:
 
 VOID Peer::shutdown()
 {
+    this->terminated = TRUE;
     CHK_LOG_ERR(freeSignalingClient(&this->pSignalingClientHandle));
-    CHK_LOG_ERR(freeStaticCredentialProvider(&this->pAwsCredentialProvider));
 
     for (auto& connection : this->connections) {
         connection->shutdown();
     }
+
+    CHK_LOG_ERR(freeStaticCredentialProvider(&this->pAwsCredentialProvider));
 }
 
 STATUS Peer::connect(UINT64 duration)
@@ -94,10 +97,10 @@ STATUS Peer::connectSignaling()
         std::string msgClientId(pMsg->signalingMessage.peerClientId);
 
         auto it = std::find_if(pPeer->connections.begin(), pPeer->connections.end(),
-                               [&](const std::shared_ptr<Connection>& c) { return c->id == msgClientId; });
+                               [&msgClientId](const std::shared_ptr<Connection>& c) { return c->id == msgClientId; });
 
         if (it == pPeer->connections.end()) {
-            pConnection = std::make_shared<Connection>(pPeer, msgClientId);
+            pConnection = std::make_shared<Connection>(pPeer, msgClientId, std::bind(&Peer::checkTerminatedConnections, pPeer));
             CHK_STATUS(pConnection->init());
             CHK_STATUS(pPeer->callbacks.onNewConnection(pConnection));
             pPeer->connections.push_back(pConnection);
@@ -122,19 +125,46 @@ CleanUp:
     return retStatus;
 }
 
-STATUS Peer::writeFrame(PFrame pFrame, MEDIA_STREAM_TRACK_KIND kind)
+VOID Peer::checkTerminatedConnections()
 {
-    STATUS retStatus = STATUS_SUCCESS;
-
-    for (auto& connection : this->connections) {
-        for (auto& transceiver : connection->getTransceivers(kind)) {
-            CHK_STATUS(connection->writeFrame(transceiver, pFrame));
-        }
+    // no need to remove connections since it's already terminated. The connections' shutdowns will be done by Peer::shutdown
+    if (this->terminated) {
+        return;
     }
 
-CleanUp:
+    auto it = this->connections.begin();
 
-    return retStatus;
+    while (it != this->connections.end()) {
+        auto& pConnection = *it;
+        if (pConnection->isTerminated()) {
+            this->updatingConnections = TRUE;
+            while (this->connectionsReaderCount != 0) {
+                // busy loop until all media thread stopped reading connections
+                THREAD_SLEEP(5 * HUNDREDS_OF_NANOS_IN_A_MILLISECOND);
+            }
+
+            pConnection->shutdown();
+            // no need to increment it since it's using the last element
+            *it = std::move(this->connections.back());
+            this->connections.pop_back();
+            this->updatingConnections = FALSE;
+        } else {
+            it++;
+        }
+    }
+}
+
+VOID Peer::writeFrame(PFrame pFrame, MEDIA_STREAM_TRACK_KIND kind)
+{
+    if (!this->updatingConnections) {
+        this->connectionsReaderCount++;
+        for (auto& connection : this->connections) {
+            for (auto& transceiver : connection->getTransceivers(kind)) {
+                CHK_LOG_ERR(connection->writeFrame(transceiver, pFrame));
+            }
+        }
+        this->connectionsReaderCount--;
+    }
 }
 
 } // namespace Canary

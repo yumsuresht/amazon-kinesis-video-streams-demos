@@ -2,8 +2,8 @@
 
 namespace Canary {
 
-Peer::Connection::Connection(PPeer pPeer, std::string id)
-    : pPeer(pPeer), id(id), pPeerConnection(nullptr), iceGatheringDone(FALSE), terminated(FALSE), receivedOffer(FALSE)
+Peer::Connection::Connection(PPeer pPeer, std::string id, std::function<VOID()> onDisconnected)
+    : pPeer(pPeer), id(id), pPeerConnection(nullptr), onDisconnected(onDisconnected), iceGatheringDone(FALSE), terminated(FALSE), receivedOffer(FALSE)
 {
 }
 
@@ -116,6 +116,19 @@ STATUS Peer::Connection::init()
         CHK_LOG_ERR(retStatus);
     };
 
+    auto onConnectionStateChange = [](UINT64 customData, RTC_PEER_CONNECTION_STATE newState) -> VOID {
+        auto pConnection = (Peer::PConnection) customData;
+
+        DLOGI("New connection state %u", newState);
+
+        if (newState == RTC_PEER_CONNECTION_STATE_FAILED || newState == RTC_PEER_CONNECTION_STATE_CLOSED ||
+            newState == RTC_PEER_CONNECTION_STATE_DISCONNECTED) {
+            if (pConnection->onDisconnected != NULL) {
+                pConnection->onDisconnected();
+            }
+        }
+    };
+
     STATUS retStatus = STATUS_SUCCESS;
     RtcConfiguration configuration;
 
@@ -124,8 +137,7 @@ STATUS Peer::Connection::init()
     CHK_STATUS(initRtcConfiguration(&configuration));
     CHK_STATUS(createPeerConnection(&configuration, &this->pPeerConnection));
     CHK_STATUS(peerConnectionOnIceCandidate(this->pPeerConnection, (UINT64) this, handleOnIceCandidate));
-    // TODO
-    // CHK_STATUS(peerConnectionOnConnectionStateChange(this->pPeerConnection, (UINT64) this, onConnectionStateChange));
+    CHK_STATUS(peerConnectionOnConnectionStateChange(this->pPeerConnection, (UINT64) this, onConnectionStateChange));
 
 CleanUp:
 
@@ -134,10 +146,16 @@ CleanUp:
 
 VOID Peer::Connection::shutdown()
 {
-    this->terminated = TRUE;
-    if (this->pPeerConnection != NULL) {
-        CHK_LOG_ERR(closePeerConnection(this->pPeerConnection));
-        CHK_LOG_ERR(freePeerConnection(&this->pPeerConnection));
+    if (!this->terminated.exchange(TRUE)) {
+        this->cvar.notify_all();
+        {
+            // lock to wait until awoken thread finish.
+            std::lock_guard<std::mutex> lock(this->mutex);
+        }
+        if (this->pPeerConnection != NULL) {
+            CHK_LOG_ERR(closePeerConnection(this->pPeerConnection));
+            CHK_LOG_ERR(freePeerConnection(&this->pPeerConnection));
+        }
     }
 }
 
@@ -147,7 +165,7 @@ STATUS Peer::Connection::handleSignalingMsg(PReceivedSignalingMessage pMsg)
         STATUS retStatus = STATUS_SUCCESS;
         std::unique_lock<std::mutex> lock(this->mutex);
         this->cvar.wait(lock, [this]() { return this->terminated.load() || this->iceGatheringDone.load(); });
-        CHK_WARN(this->terminated, STATUS_OPERATION_TIMED_OUT, "application terminated and candidate gathering still not done");
+        CHK_WARN(this->terminated.load(), STATUS_OPERATION_TIMED_OUT, "application terminated and candidate gathering still not done");
 
         CHK_STATUS(peerConnectionGetCurrentLocalDescription(this->pPeerConnection, pSDPInit));
 
@@ -239,6 +257,8 @@ STATUS Peer::Connection::handleSignalingMsg(PReceivedSignalingMessage pMsg)
     STATUS retStatus = STATUS_SUCCESS;
     std::lock_guard<std::mutex> lock(this->mutex);
     auto& msg = pMsg->signalingMessage;
+
+    CHK(!this->terminated.load(), retStatus);
     switch (msg.messageType) {
         case SIGNALING_MESSAGE_TYPE_OFFER:
             CHK_STATUS(handleOffer(msg));
@@ -290,6 +310,11 @@ CleanUp:
 const std::vector<PRtcRtpTransceiver>& Peer::Connection::getTransceivers(MEDIA_STREAM_TRACK_KIND kind)
 {
     return kind == MEDIA_STREAM_TRACK_KIND_VIDEO ? this->videoTransceivers : this->audioTransceivers;
+}
+
+BOOL Peer::Connection::isTerminated()
+{
+    return this->terminated.load();
 }
 
 STATUS Peer::Connection::writeFrame(PRtcRtpTransceiver pTransceiver, PFrame pFrame)

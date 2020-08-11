@@ -52,6 +52,7 @@ STATUS run(Canary::PConfig pConfig)
                                 NUMBER_OF_H264_FRAME_FILES, SAMPLE_VIDEO_FRAME_DURATION);
         std::thread audioThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_AUDIO, "./opusSampleFrames/sample-%03d.opus",
                                 NUMBER_OF_OPUS_FRAME_FILES, SAMPLE_AUDIO_FRAME_DURATION);
+
         videoThread.join();
         audioThread.join();
         peer.shutdown();
@@ -138,6 +139,8 @@ VOID sendLocalFrames(Canary::PPeer pPeer, MEDIA_STREAM_TRACK_KIND kind, const st
     }
 
 CleanUp:
+
+    MEMFREE(frame.frameData);
 
     auto threadKind = kind == MEDIA_STREAM_TRACK_KIND_VIDEO ? "video" : "audio";
     if (STATUS_FAILED(retStatus)) {

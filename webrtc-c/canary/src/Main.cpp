@@ -1,5 +1,6 @@
 #include "Include.h"
 
+#define CANARY_METADATA_SIZE (SIZEOF(INT64) + SIZEOF(UINT32) + SIZEOF(UINT32) + SIZEOF(UINT64))
 STATUS onNewConnection(Canary::PPeer);
 STATUS run(Canary::PConfig);
 VOID sendLocalFrames(Canary::PPeer, MEDIA_STREAM_TRACK_KIND, const std::string&, UINT64, UINT32);
@@ -86,9 +87,9 @@ STATUS run(Canary::PConfig pConfig)
         CHK_STATUS(peer.init());
         CHK_STATUS(peer.connect());
 
-        std::thread videoThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_VIDEO, "./assets/h264SampleFrames/frame-%04d.h264",
+        std::thread videoThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_VIDEO, CANARY_VIDEO_FRAMES_PATH,
                                 NUMBER_OF_H264_FRAME_FILES, SAMPLE_VIDEO_FRAME_DURATION);
-        std::thread audioThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_AUDIO, "./assets/opusSampleFrames/sample-%03d.opus",
+        std::thread audioThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_AUDIO, CANARY_AUDIO_FRAMES_PATH,
                                 NUMBER_OF_OPUS_FRAME_FILES, SAMPLE_AUDIO_FRAME_DURATION);
 
         videoThread.join();
@@ -144,6 +145,7 @@ CleanUp:
     return retStatus;
 }
 
+VOID getCanaryMetrics()
 VOID sendLocalFrames(Canary::PPeer pPeer, MEDIA_STREAM_TRACK_KIND kind, const std::string& pattern, UINT64 frameCount, UINT32 frameDuration)
 {
     STATUS retStatus = STATUS_SUCCESS;

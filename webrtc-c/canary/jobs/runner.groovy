@@ -42,6 +42,7 @@ def buildPeer(isMaster, params) {
             mkdir -p build && 
             cd build && 
             cmake .. -DCMAKE_INSTALL_PREFIX=$WORKSPACE/webrtc-c/canary/build && 
+            ulimit -c unlimited &&
             make -j kvsWebrtcCanary"""
     }
 

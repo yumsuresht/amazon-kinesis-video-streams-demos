@@ -537,4 +537,25 @@ CleanUp:
     return retStatus;
 }
 
+VOID Peer::setStatsType(RTC_STATS_TYPE statsType)
+{
+    this->canaryMetrics.requestedTypeOfStats = statsType;
+}
+
+RTC_STATS_TYPE Peer::getStatsType()
+{
+    return this->canaryMetrics.requestedTypeOfStats;
+}
+
+STATUS Peer::getStatsForCanary()
+{
+   STATUS retStatus = STATUS_SUCCESS;
+   auto& transceivers = this->videoTransceivers;
+   for (auto& transceiver : transceivers) {
+       CHK_LOG_ERR(::rtcPeerConnectionGetMetrics(this->pPeerConnection, transceiver, &this->canaryMetrics));
+       DLOGD("Stats requested at: %llu", this->canaryMetrics.timestamp);
+   }
+CleanUp:
+   return retStatus;
+}
 } // namespace Canary

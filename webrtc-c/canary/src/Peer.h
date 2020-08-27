@@ -20,6 +20,11 @@ class Peer {
     STATUS addSupportedCodec(RTC_CODEC);
     STATUS writeFrame(PFrame, MEDIA_STREAM_TRACK_KIND);
 
+    // WebRTC Stats
+    VOID setStatsType(RTC_STATS_TYPE);
+    RTC_STATS_TYPE getStatsType();
+    STATUS getStatsForCanary();
+
   private:
     const Canary::PConfig pConfig;
     const Callbacks callbacks;

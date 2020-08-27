@@ -57,6 +57,6 @@ using namespace std;
 
 #include "Config.h"
 #include "CloudwatchLogs.h"
+#include "Peer.h"
 #include "CloudwatchMonitoring.h"
 #include "Cloudwatch.h"
-#include "Peer.h"

@@ -96,4 +96,24 @@ VOID CloudwatchMonitoring::pushICEHolePunchingDelay(UINT64 delay, StandardUnit u
     this->push(datum);
 }
 
+VOID CloudwatchMonitoring::pushOutboundRtpStats(Canary::POutgoingRTPMetricsContext pOutboundRtpStats)
+{
+    MetricDatum bytesDiscardedPercentageDatum, averageFramesRateDatum;
+
+    bytesDiscardedPercentageDatum.SetMetricName("Percentagebytesdiscarded");
+    bytesDiscardedPercentageDatum.SetValue(pOutboundRtpStats->framesBytesPercentageDiscarded);
+    bytesDiscardedPercentageDatum.SetUnit(StandardUnit::Percent);
+
+    bytesDiscardedPercentageDatum.AddDimensions(this->channelDimension);
+    this->push(bytesDiscardedPercentageDatum);
+
+    averageFramesRateDatum.SetMetricName("FramesPerSecond");
+    averageFramesRateDatum.SetValue(pOutboundRtpStats->averageFramesSentPerSecond);
+    averageFramesRateDatum.SetUnit(StandardUnit::Count_Second);
+
+    averageFramesRateDatum.AddDimensions(this->channelDimension);
+
+    this->push(averageFramesRateDatum);
+}
+
 } // namespace Canary

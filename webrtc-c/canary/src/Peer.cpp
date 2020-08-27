@@ -563,6 +563,7 @@ STATUS Peer::getStatsForCanary()
        DLOGD("Stats requested at: %llu", currentDuration);
        DLOGD("Frame bytes percentage discarded: %lf", this->canaryOutgoingRTPMetricsContext.framesBytesPercentageDiscarded);
        DLOGD("Average frames sent per second: %lf", this->canaryOutgoingRTPMetricsContext.averageFramesSentPerSecond);
+       Canary::Cloudwatch::getInstance().monitoring.pushOutboundRtpStats(&this->canaryOutgoingRTPMetricsContext);
    }
 CleanUp:
    return retStatus;

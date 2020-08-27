@@ -1,6 +1,9 @@
 #pragma once
 namespace Canary {
 
+class Peer;
+typedef Peer* PPeer;
+
 typedef struct
 {
     UINT64 prevNumberOfPacketsSent;
@@ -8,12 +11,13 @@ typedef struct
     UINT64 prevNumberOfBytesSent;
     UINT64 prevNumberOfBytesReceived;
     UINT64 prevPacketsDiscardedOnSend;
+    DOUBLE framesBytesPercentageDiscarded;
+    DOUBLE averageFramesSentPerSecond;
     UINT64 prevTs;
+    UINT64 prevNumberOfBytesGenerated;
+    UINT64 prevFramesSent;
 } OutgoingRTPMetricsContext;
 typedef OutgoingRTPMetricsContext* POutgoingRTPMetricsContext;
-
-class Peer;
-typedef Peer* PPeer;
 
 class Peer {
   public:
@@ -53,6 +57,7 @@ class Peer {
     PRtcPeerConnection pPeerConnection;
     std::vector<PRtcRtpTransceiver> audioTransceivers;
     std::vector<PRtcRtpTransceiver> videoTransceivers;
+    UINT64 numberOfFrameBytes;
     STATUS status;
 
     // metrics

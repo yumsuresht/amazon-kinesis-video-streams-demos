@@ -38,7 +38,7 @@ class Peer {
     // WebRTC Stats
     VOID setStatsType(RTC_STATS_TYPE);
     RTC_STATS_TYPE getStatsType();
-    STATUS getStatsForCanary();
+    STATUS publishStatsForCanary(MEDIA_STREAM_TRACK_KIND);
 
   private:
     const Canary::PConfig pConfig;

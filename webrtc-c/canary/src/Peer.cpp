@@ -548,23 +548,21 @@ RTC_STATS_TYPE Peer::getStatsType()
     return this->canaryMetrics.requestedTypeOfStats;
 }
 
-STATUS Peer::getStatsForCanary()
+STATUS Peer::publishStatsForCanary(MEDIA_STREAM_TRACK_KIND kind)
 {
    STATUS retStatus = STATUS_SUCCESS;
    UINT64 currentDuration = 0;
-   auto& transceivers = this->videoTransceivers;
-   for (auto& transceiver : transceivers) {
-       CHK_LOG_ERR(::rtcPeerConnectionGetMetrics(this->pPeerConnection, transceiver, &this->canaryMetrics));
-       currentDuration = (this->canaryMetrics.timestamp - this->canaryOutgoingRTPMetricsContext.prevTs) / HUNDREDS_OF_NANOS_IN_A_SECOND;
-       this->canaryOutgoingRTPMetricsContext.framesBytesPercentageDiscarded = ((DOUBLE)(this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.bytesDiscardedOnSend/(DOUBLE)this->canaryOutgoingRTPMetricsContext.prevNumberOfBytesGenerated)) * 100;
-       this->canaryOutgoingRTPMetricsContext.averageFramesSentPerSecond = ((DOUBLE)(this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesSent - (DOUBLE)this->canaryOutgoingRTPMetricsContext.prevFramesSent)) / (DOUBLE)currentDuration;
-       this->canaryOutgoingRTPMetricsContext.prevFramesSent = this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesSent;
-       this->canaryOutgoingRTPMetricsContext.prevTs = this->canaryMetrics.timestamp;
-       DLOGD("Stats requested at: %llu", currentDuration);
-       DLOGD("Frame bytes percentage discarded: %lf", this->canaryOutgoingRTPMetricsContext.framesBytesPercentageDiscarded);
-       DLOGD("Average frames sent per second: %lf", this->canaryOutgoingRTPMetricsContext.averageFramesSentPerSecond);
-       Canary::Cloudwatch::getInstance().monitoring.pushOutboundRtpStats(&this->canaryOutgoingRTPMetricsContext);
-   }
+
+   CHK_LOG_ERR(::rtcPeerConnectionGetMetrics(this->pPeerConnection, NULL, &this->canaryMetrics));
+   currentDuration = (this->canaryMetrics.timestamp - this->canaryOutgoingRTPMetricsContext.prevTs) / HUNDREDS_OF_NANOS_IN_A_SECOND;
+   this->canaryOutgoingRTPMetricsContext.framesBytesPercentageDiscarded = ((DOUBLE)(this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.bytesDiscardedOnSend/(DOUBLE)this->canaryOutgoingRTPMetricsContext.prevNumberOfBytesGenerated)) * 100;
+   this->canaryOutgoingRTPMetricsContext.averageFramesSentPerSecond = ((DOUBLE)(this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesSent - (DOUBLE)this->canaryOutgoingRTPMetricsContext.prevFramesSent)) / (DOUBLE)currentDuration;
+   this->canaryOutgoingRTPMetricsContext.prevFramesSent = this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesSent;
+   this->canaryOutgoingRTPMetricsContext.prevTs = this->canaryMetrics.timestamp;
+   DLOGD("Stats requested at: %llu", currentDuration);
+   DLOGD("Frame bytes percentage discarded: %lf", this->canaryOutgoingRTPMetricsContext.framesBytesPercentageDiscarded);
+   DLOGD("Average frames sent per second: %lf", this->canaryOutgoingRTPMetricsContext.averageFramesSentPerSecond);
+   Canary::Cloudwatch::getInstance().monitoring.pushOutboundRtpStats(&this->canaryOutgoingRTPMetricsContext);
 CleanUp:
    return retStatus;
 }

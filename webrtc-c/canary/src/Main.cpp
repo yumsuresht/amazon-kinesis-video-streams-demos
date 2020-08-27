@@ -1,13 +1,11 @@
 #include "Include.h"
 
-#define CANARY_METADATA_SIZE (SIZEOF(INT64) + SIZEOF(UINT32) + SIZEOF(UINT32) + SIZEOF(UINT64))
 STATUS onNewConnection(Canary::PPeer);
 STATUS run(Canary::PConfig);
 VOID sendLocalFrames(Canary::PPeer, MEDIA_STREAM_TRACK_KIND, const std::string&, UINT64, UINT32);
 STATUS canaryRtpOutboundStats(UINT32, UINT64, UINT64);
 
 std::atomic<bool> terminated;
-
 VOID handleSignal(INT32 signal)
 {
     UNUSED_PARAM(signal);
@@ -95,6 +93,7 @@ STATUS run(Canary::PConfig pConfig)
                                 NUMBER_OF_OPUS_FRAME_FILES, SAMPLE_AUDIO_FRAME_DURATION);
 
         CHK_STATUS(timerQueueAddTimer(timerQueueHandle, METRICS_INVOCATION_PERIOD, METRICS_INVOCATION_PERIOD, canaryRtpOutboundStats, (UINT64) &peer, &timeoutTimerId));
+        CHK_STATUS(timerQueueAddTimer(timerQueueHandle, METRICS_INVOCATION_PERIOD, METRICS_INVOCATION_PERIOD, canaryIceCandidatePairStats, (UINT64) &peer, &timeoutTimerId));
         videoThread.join();
         audioThread.join();
         CHK_STATUS(peer.shutdown());

@@ -1,6 +1,17 @@
 #pragma once
 namespace Canary {
 
+typedef struct
+{
+    UINT64 prevNumberOfPacketsSent;
+    UINT64 prevNumberOfPacketsReceived;
+    UINT64 prevNumberOfBytesSent;
+    UINT64 prevNumberOfBytesReceived;
+    UINT64 prevPacketsDiscardedOnSend;
+    UINT64 prevTs;
+} OutgoingRTPMetricsContext;
+typedef OutgoingRTPMetricsContext* POutgoingRTPMetricsContext;
+
 class Peer;
 typedef Peer* PPeer;
 
@@ -48,6 +59,7 @@ class Peer {
     UINT64 signalingStartTime;
     UINT64 iceHolePunchingStartTime;
     RtcStats canaryMetrics;
+    OutgoingRTPMetricsContext canaryOutgoingRTPMetricsContext;
 
     STATUS initSignaling();
     STATUS initRtcConfiguration();

@@ -18,7 +18,7 @@ Peer::~Peer()
 STATUS Peer::init()
 {
     STATUS retStatus = STATUS_SUCCESS;
-
+    this->canaryOutgoingRTPMetricsContext.prevTs = GETTIME();
     CHK_STATUS(createStaticCredentialProvider((PCHAR) pConfig->pAccessKey, 0, (PCHAR) pConfig->pSecretKey, 0, (PCHAR) pConfig->pSessionToken, 0,
                                               MAX_UINT64, &pAwsCredentialProvider));
     CHK_STATUS(initSignaling());
@@ -550,10 +550,13 @@ RTC_STATS_TYPE Peer::getStatsType()
 STATUS Peer::getStatsForCanary()
 {
    STATUS retStatus = STATUS_SUCCESS;
+   UINT64 currentTime = 0;
    auto& transceivers = this->videoTransceivers;
    for (auto& transceiver : transceivers) {
        CHK_LOG_ERR(::rtcPeerConnectionGetMetrics(this->pPeerConnection, transceiver, &this->canaryMetrics));
-       DLOGD("Stats requested at: %llu", this->canaryMetrics.timestamp);
+       currentTime = (this->canaryMetrics.timestamp - this->canaryOutgoingRTPMetricsContext.prevTs) / HUNDREDS_OF_NANOS_IN_A_SECOND;
+       this->canaryOutgoingRTPMetricsContext.prevTs = this->canaryMetrics.timestamp;
+       DLOGD("Stats requested at: %llu", currentTime);
    }
 CleanUp:
    return retStatus;

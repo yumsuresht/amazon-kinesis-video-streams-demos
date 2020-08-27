@@ -53,7 +53,7 @@ STATUS Peer::initSignaling()
     channelInfo.channelType = SIGNALING_CHANNEL_TYPE_SINGLE_MASTER;
     channelInfo.channelRoleType = pConfig->isMaster ? SIGNALING_CHANNEL_ROLE_TYPE_MASTER : SIGNALING_CHANNEL_ROLE_TYPE_VIEWER;
     channelInfo.cachingPolicy = SIGNALING_API_CALL_CACHE_TYPE_FILE;
-    channelInfo.cachingPeriod = SIGNALING_API_CALL_CACHE_TTL_SENTINEL_VALUE;
+    channelInfo.cachingPeriod = 0;
     channelInfo.asyncIceServerConfig = TRUE;
     channelInfo.retry = TRUE;
     channelInfo.reconnect = TRUE;

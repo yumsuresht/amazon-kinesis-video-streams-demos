@@ -94,6 +94,8 @@ pipeline {
         stage('Preparation') {
             steps {
               echo params.toString()
+
+              echo "Test update"
             }
         }
 

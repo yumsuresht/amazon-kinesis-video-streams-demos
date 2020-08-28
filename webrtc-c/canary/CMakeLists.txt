@@ -13,7 +13,7 @@ set(BUILD_ONLY "monitoring;logs")
 FetchContent_Declare(
   webrtc
   GIT_REPOSITORY https://github.com/awslabs/amazon-kinesis-video-streams-webrtc-sdk-c
-  GIT_TAG        master
+  GIT_TAG        segfault-fix
 )
 
 FetchContent_Declare(

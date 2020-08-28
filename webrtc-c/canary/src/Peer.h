@@ -4,8 +4,7 @@ namespace Canary {
 class Peer;
 typedef Peer* PPeer;
 
-typedef struct
-{
+typedef struct {
     UINT64 prevNumberOfPacketsSent;
     UINT64 prevNumberOfPacketsReceived;
     UINT64 prevNumberOfBytesSent;

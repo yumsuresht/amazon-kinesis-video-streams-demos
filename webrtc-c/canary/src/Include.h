@@ -31,10 +31,10 @@
 #define CANARY_CERT_PATH_ENV_VAR           "CANARY_CERT_PATH"
 #define CANARY_DURATION_IN_SECONDS_ENV_VAR "CANARY_DURATION_IN_SECONDS"
 
-#define CANARY_VIDEO_FRAMES_PATH       (PCHAR) "./assets/h264SampleFrames/frame-%04d.h264"
-#define CANARY_AUDIO_FRAMES_PATH       (PCHAR) "./assets/opusSampleFrames/sample-%03d.opus"
+#define CANARY_VIDEO_FRAMES_PATH (PCHAR) "./assets/h264SampleFrames/frame-%04d.h264"
+#define CANARY_AUDIO_FRAMES_PATH (PCHAR) "./assets/opusSampleFrames/sample-%03d.opus"
 
-#define METRICS_INVOCATION_PERIOD      (60 * HUNDREDS_OF_NANOS_IN_A_SECOND)
+#define METRICS_INVOCATION_PERIOD (60 * HUNDREDS_OF_NANOS_IN_A_SECOND)
 
 #include <aws/core/Aws.h>
 #include <aws/monitoring/CloudWatchClient.h>

@@ -93,7 +93,6 @@ STATUS run(Canary::PConfig pConfig)
                                 NUMBER_OF_OPUS_FRAME_FILES, SAMPLE_AUDIO_FRAME_DURATION);
 
         CHK_STATUS(timerQueueAddTimer(timerQueueHandle, METRICS_INVOCATION_PERIOD, METRICS_INVOCATION_PERIOD, canaryRtpOutboundStats, (UINT64) &peer, &timeoutTimerId));
-        CHK_STATUS(timerQueueAddTimer(timerQueueHandle, METRICS_INVOCATION_PERIOD, METRICS_INVOCATION_PERIOD, canaryIceCandidatePairStats, (UINT64) &peer, &timeoutTimerId));
         videoThread.join();
         audioThread.join();
         CHK_STATUS(peer.shutdown());

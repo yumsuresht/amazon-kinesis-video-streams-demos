@@ -98,22 +98,31 @@ VOID CloudwatchMonitoring::pushICEHolePunchingDelay(UINT64 delay, StandardUnit u
 
 VOID CloudwatchMonitoring::pushOutboundRtpStats(Canary::POutgoingRTPMetricsContext pOutboundRtpStats)
 {
-    MetricDatum bytesDiscardedPercentageDatum, averageFramesRateDatum;
+    MetricDatum bytesDiscardedPercentageDatum, averageFramesRateDatum, nackRateDatum, retransmissionPercentDatum;
 
     bytesDiscardedPercentageDatum.SetMetricName("Percentageframediscarded");
     bytesDiscardedPercentageDatum.SetValue(pOutboundRtpStats->framesPercentageDiscarded);
     bytesDiscardedPercentageDatum.SetUnit(StandardUnit::Percent);
-
     bytesDiscardedPercentageDatum.AddDimensions(this->channelDimension);
     this->push(bytesDiscardedPercentageDatum);
 
     averageFramesRateDatum.SetMetricName("FramesPerSecond");
     averageFramesRateDatum.SetValue(pOutboundRtpStats->averageFramesSentPerSecond);
     averageFramesRateDatum.SetUnit(StandardUnit::Count_Second);
-
     averageFramesRateDatum.AddDimensions(this->channelDimension);
-
     this->push(averageFramesRateDatum);
+
+    nackRateDatum.SetMetricName("NackRate");
+    nackRateDatum.SetValue(pOutboundRtpStats->nacksPerSecond);
+    nackRateDatum.SetUnit(StandardUnit::Count_Second);
+    nackRateDatum.AddDimensions(this->channelDimension);
+    this->push(nackRateDatum);
+
+    retransmissionPercentDatum.SetMetricName("PercentageFramesRetransmitted");
+    retransmissionPercentDatum.SetValue(pOutboundRtpStats->retxBytesPercentage);
+    retransmissionPercentDatum.SetUnit(StandardUnit::Percent);
+    retransmissionPercentDatum.AddDimensions(this->channelDimension);
+    this->push(retransmissionPercentDatum);
 }
 
 } // namespace Canary

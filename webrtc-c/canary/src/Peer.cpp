@@ -21,6 +21,9 @@ STATUS Peer::init()
 
     this->canaryOutgoingRTPMetricsContext.prevTs = GETTIME();
     this->canaryOutgoingRTPMetricsContext.prevFramesDiscardedOnSend = 0;
+    this->canaryOutgoingRTPMetricsContext.prevNackCount = 0;
+    this->canaryOutgoingRTPMetricsContext.prevRetxBytesSent = 0;
+    this->canaryOutgoingRTPMetricsContext.prevFramesSent = 0;
 
     CHK_STATUS(createStaticCredentialProvider((PCHAR) pConfig->pAccessKey, 0, (PCHAR) pConfig->pSecretKey, 0, (PCHAR) pConfig->pSessionToken, 0,
                                               MAX_UINT64, &pAwsCredentialProvider));
@@ -532,10 +535,12 @@ STATUS Peer::writeFrame(PFrame pFrame, MEDIA_STREAM_TRACK_KIND kind)
     auto& transceivers = kind == MEDIA_STREAM_TRACK_KIND_VIDEO ? this->videoTransceivers : this->audioTransceivers;
     if (this->recorded.load()) {
         this->canaryOutgoingRTPMetricsContext.videoFramesGenerated = 0;
+        this->canaryOutgoingRTPMetricsContext.videoBytesGenerated = 0;
         this->recorded = FALSE;
     }
     if (kind == MEDIA_STREAM_TRACK_KIND_VIDEO) {
         this->canaryOutgoingRTPMetricsContext.videoFramesGenerated++;
+        this->canaryOutgoingRTPMetricsContext.videoBytesGenerated += pFrame->size;
     }
     for (auto& transceiver : transceivers) {
         CHK_LOG_ERR(::writeFrame(transceiver, pFrame));
@@ -559,24 +564,37 @@ RTC_STATS_TYPE Peer::getStatsType()
 STATUS Peer::populateOutgoingRtpMetricsContext()
 {
     STATUS retStatus = STATUS_SUCCESS;
-    UINT64 currentDuration = 0;
-    currentDuration = (this->canaryMetrics.timestamp - this->canaryOutgoingRTPMetricsContext.prevTs) / HUNDREDS_OF_NANOS_IN_A_SECOND;
+    DOUBLE currentDuration = 0;
+    currentDuration = (DOUBLE)(this->canaryMetrics.timestamp - this->canaryOutgoingRTPMetricsContext.prevTs) / HUNDREDS_OF_NANOS_IN_A_SECOND;
+    DLOGD("duration:%lf", currentDuration);
     this->canaryOutgoingRTPMetricsContext.framesPercentageDiscarded =
         ((DOUBLE)(this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesDiscardedOnSend -
                   this->canaryOutgoingRTPMetricsContext.prevFramesDiscardedOnSend) /
          (DOUBLE) this->canaryOutgoingRTPMetricsContext.videoFramesGenerated) *
         100.0;
+    this->canaryOutgoingRTPMetricsContext.retxBytesPercentage =
+        (((DOUBLE) this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.retransmittedBytesSent -
+          (DOUBLE)(this->canaryOutgoingRTPMetricsContext.prevRetxBytesSent)) /
+         (DOUBLE) this->canaryOutgoingRTPMetricsContext.videoBytesGenerated) *
+        100.0;
     this->recorded = TRUE;
     this->canaryOutgoingRTPMetricsContext.averageFramesSentPerSecond =
         ((DOUBLE)(this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesSent -
                   (DOUBLE) this->canaryOutgoingRTPMetricsContext.prevFramesSent)) /
-        (DOUBLE) currentDuration;
-
+        currentDuration;
+    this->canaryOutgoingRTPMetricsContext.nacksPerSecond =
+        ((DOUBLE) this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.nackCount - this->canaryOutgoingRTPMetricsContext.prevNackCount) /
+        currentDuration;
     this->canaryOutgoingRTPMetricsContext.prevFramesSent = this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesSent;
     this->canaryOutgoingRTPMetricsContext.prevTs = this->canaryMetrics.timestamp;
     this->canaryOutgoingRTPMetricsContext.prevFramesDiscardedOnSend = this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesDiscardedOnSend;
+    this->canaryOutgoingRTPMetricsContext.prevNackCount = this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.nackCount;
+    this->canaryOutgoingRTPMetricsContext.prevRetxBytesSent = this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.retransmittedBytesSent;
+
     DLOGD("Frames discard percent: %lf", this->canaryOutgoingRTPMetricsContext.framesPercentageDiscarded);
     DLOGD("Average frame rate: %lf", this->canaryOutgoingRTPMetricsContext.averageFramesSentPerSecond);
+    DLOGD("Nack rate: %lf", this->canaryOutgoingRTPMetricsContext.nacksPerSecond);
+    DLOGD("Retransmission percent: %lf", this->canaryOutgoingRTPMetricsContext.retxBytesPercentage);
 CleanUp:
     return retStatus;
 }

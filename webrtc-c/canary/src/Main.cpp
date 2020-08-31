@@ -87,12 +87,13 @@ STATUS run(Canary::PConfig pConfig)
         CHK_STATUS(peer.init());
         CHK_STATUS(peer.connect());
 
-        std::thread videoThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_VIDEO, CANARY_VIDEO_FRAMES_PATH,
-                                NUMBER_OF_H264_FRAME_FILES, SAMPLE_VIDEO_FRAME_DURATION);
-        std::thread audioThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_AUDIO, CANARY_AUDIO_FRAMES_PATH,
-                                NUMBER_OF_OPUS_FRAME_FILES, SAMPLE_AUDIO_FRAME_DURATION);
+        std::thread videoThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_VIDEO, CANARY_VIDEO_FRAMES_PATH, NUMBER_OF_H264_FRAME_FILES,
+                                SAMPLE_VIDEO_FRAME_DURATION);
+        std::thread audioThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_AUDIO, CANARY_AUDIO_FRAMES_PATH, NUMBER_OF_OPUS_FRAME_FILES,
+                                SAMPLE_AUDIO_FRAME_DURATION);
 
-        CHK_STATUS(timerQueueAddTimer(timerQueueHandle, METRICS_INVOCATION_PERIOD, METRICS_INVOCATION_PERIOD, canaryRtpOutboundStats, (UINT64) &peer, &timeoutTimerId));
+        CHK_STATUS(timerQueueAddTimer(timerQueueHandle, METRICS_INVOCATION_PERIOD, METRICS_INVOCATION_PERIOD, canaryRtpOutboundStats, (UINT64) &peer,
+                                      &timeoutTimerId));
         videoThread.join();
         audioThread.join();
         CHK_STATUS(peer.shutdown());
@@ -152,7 +153,7 @@ STATUS canaryRtpOutboundStats(UINT32 timerId, UINT64 currentTime, UINT64 customD
     Canary::PPeer pPeer = (Canary::PPeer) customData;
     RTC_STATS_TYPE statsRequested = pPeer->getStatsType();
     pPeer->setStatsType(RTC_STATS_TYPE_OUTBOUND_RTP);
-    pPeer->publishStatsForCanary(MEDIA_STREAM_TRACK_KIND_VIDEO);
+    pPeer->publishStatsForCanary();
 CleanUp:
     return retStatus;
 }

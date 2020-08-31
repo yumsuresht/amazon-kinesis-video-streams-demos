@@ -100,8 +100,8 @@ VOID CloudwatchMonitoring::pushOutboundRtpStats(Canary::POutgoingRTPMetricsConte
 {
     MetricDatum bytesDiscardedPercentageDatum, averageFramesRateDatum;
 
-    bytesDiscardedPercentageDatum.SetMetricName("Percentagebytesdiscarded");
-    bytesDiscardedPercentageDatum.SetValue(pOutboundRtpStats->framesBytesPercentageDiscarded);
+    bytesDiscardedPercentageDatum.SetMetricName("Percentageframediscarded");
+    bytesDiscardedPercentageDatum.SetValue(pOutboundRtpStats->framesPercentageDiscarded);
     bytesDiscardedPercentageDatum.SetUnit(StandardUnit::Percent);
 
     bytesDiscardedPercentageDatum.AddDimensions(this->channelDimension);

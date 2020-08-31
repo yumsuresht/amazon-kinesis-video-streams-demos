@@ -9,11 +9,12 @@ typedef struct {
     UINT64 prevNumberOfPacketsReceived;
     UINT64 prevNumberOfBytesSent;
     UINT64 prevNumberOfBytesReceived;
-    UINT64 prevPacketsDiscardedOnSend;
-    DOUBLE framesBytesPercentageDiscarded;
+    UINT64 prevFramesDiscardedOnSend;
+    DOUBLE framesPercentageDiscarded;
     DOUBLE averageFramesSentPerSecond;
     UINT64 prevTs;
-    UINT64 prevNumberOfBytesGenerated;
+    UINT64 prevVideoFramesGenerated;
+    std::atomic<UINT64> videoFramesGenerated;
     UINT64 prevFramesSent;
 } OutgoingRTPMetricsContext;
 typedef OutgoingRTPMetricsContext* POutgoingRTPMetricsContext;
@@ -37,7 +38,7 @@ class Peer {
     // WebRTC Stats
     VOID setStatsType(RTC_STATS_TYPE);
     RTC_STATS_TYPE getStatsType();
-    STATUS publishStatsForCanary(MEDIA_STREAM_TRACK_KIND);
+    STATUS publishStatsForCanary();
 
   private:
     const Canary::PConfig pConfig;
@@ -51,6 +52,7 @@ class Peer {
     std::atomic<BOOL> receivedOffer;
     std::atomic<BOOL> receivedAnswer;
     std::atomic<BOOL> foundPeerId;
+    std::atomic<BOOL> recorded;
     std::string peerId;
     RtcConfiguration rtcConfiguration;
     PRtcPeerConnection pPeerConnection;
@@ -71,6 +73,7 @@ class Peer {
     STATUS awaitIceGathering(PRtcSessionDescriptionInit);
     STATUS handleSignalingMsg(PReceivedSignalingMessage);
     STATUS send(PSignalingMessage);
+    STATUS populateOutgoingRtpMetricsContext();
 };
 
 } // namespace Canary

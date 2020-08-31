@@ -4,7 +4,7 @@ namespace Canary {
 
 Peer::Peer(const Canary::PConfig pConfig, const Callbacks& callbacks)
     : pConfig(pConfig), callbacks(callbacks), pAwsCredentialProvider(nullptr), terminated(FALSE), iceGatheringDone(FALSE), receivedOffer(FALSE),
-      receivedAnswer(FALSE), foundPeerId(FALSE), pPeerConnection(nullptr), status(STATUS_SUCCESS)
+      receivedAnswer(FALSE), foundPeerId(FALSE), pPeerConnection(nullptr), status(STATUS_SUCCESS), recorded(FALSE)
 {
 }
 
@@ -20,6 +20,7 @@ STATUS Peer::init()
     STATUS retStatus = STATUS_SUCCESS;
 
     this->canaryOutgoingRTPMetricsContext.prevTs = GETTIME();
+    this->canaryOutgoingRTPMetricsContext.prevFramesDiscardedOnSend = 0;
 
     CHK_STATUS(createStaticCredentialProvider((PCHAR) pConfig->pAccessKey, 0, (PCHAR) pConfig->pSecretKey, 0, (PCHAR) pConfig->pSessionToken, 0,
                                               MAX_UINT64, &pAwsCredentialProvider));
@@ -529,7 +530,13 @@ STATUS Peer::writeFrame(PFrame pFrame, MEDIA_STREAM_TRACK_KIND kind)
     STATUS retStatus = STATUS_SUCCESS;
 
     auto& transceivers = kind == MEDIA_STREAM_TRACK_KIND_VIDEO ? this->videoTransceivers : this->audioTransceivers;
-    this->canaryOutgoingRTPMetricsContext.prevNumberOfBytesGenerated += pFrame->size;
+    if (this->recorded.load()) {
+        this->canaryOutgoingRTPMetricsContext.videoFramesGenerated = 0;
+        this->recorded = FALSE;
+    }
+    if (kind == MEDIA_STREAM_TRACK_KIND_VIDEO) {
+        this->canaryOutgoingRTPMetricsContext.videoFramesGenerated++;
+    }
     for (auto& transceiver : transceivers) {
         CHK_LOG_ERR(::writeFrame(transceiver, pFrame));
     }
@@ -549,27 +556,44 @@ RTC_STATS_TYPE Peer::getStatsType()
     return this->canaryMetrics.requestedTypeOfStats;
 }
 
-STATUS Peer::publishStatsForCanary(MEDIA_STREAM_TRACK_KIND kind)
+STATUS Peer::populateOutgoingRtpMetricsContext()
 {
-   STATUS retStatus = STATUS_SUCCESS;
-   UINT64 currentDuration = 0;
-   auto& transceivers = kind == MEDIA_STREAM_TRACK_KIND_VIDEO ? this->videoTransceivers : this->audioTransceivers;
-   switch(this->canaryMetrics.requestedTypeOfStats) {
-       case RTC_STATS_TYPE_OUTBOUND_RTP:
-          for (auto& transceiver : transceivers) {
-              CHK_LOG_ERR(::rtcPeerConnectionGetMetrics(this->pPeerConnection, transceiver, &this->canaryMetrics));
-              currentDuration = (this->canaryMetrics.timestamp - this->canaryOutgoingRTPMetricsContext.prevTs) / HUNDREDS_OF_NANOS_IN_A_SECOND;
-              this->canaryOutgoingRTPMetricsContext.framesBytesPercentageDiscarded = ((DOUBLE)(this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.bytesDiscardedOnSend/(DOUBLE)this->canaryOutgoingRTPMetricsContext.prevNumberOfBytesGenerated)) * 100;
-              this->canaryOutgoingRTPMetricsContext.averageFramesSentPerSecond = ((DOUBLE)(this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesSent - (DOUBLE)this->canaryOutgoingRTPMetricsContext.prevFramesSent)) / (DOUBLE)currentDuration;
-              this->canaryOutgoingRTPMetricsContext.prevFramesSent = this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesSent;
-              this->canaryOutgoingRTPMetricsContext.prevTs = this->canaryMetrics.timestamp;
-              Canary::Cloudwatch::getInstance().monitoring.pushOutboundRtpStats(&this->canaryOutgoingRTPMetricsContext);
-          }
-          break;
-       default:
-           CHK(FALSE, STATUS_NOT_IMPLEMENTED);
-   }
+    STATUS retStatus = STATUS_SUCCESS;
+    UINT64 currentDuration = 0;
+    currentDuration = (this->canaryMetrics.timestamp - this->canaryOutgoingRTPMetricsContext.prevTs) / HUNDREDS_OF_NANOS_IN_A_SECOND;
+    this->canaryOutgoingRTPMetricsContext.framesPercentageDiscarded =
+        ((DOUBLE)(this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesDiscardedOnSend -
+                  this->canaryOutgoingRTPMetricsContext.prevFramesDiscardedOnSend) /
+         (DOUBLE) this->canaryOutgoingRTPMetricsContext.videoFramesGenerated) *
+        100.0;
+    this->recorded = TRUE;
+    this->canaryOutgoingRTPMetricsContext.averageFramesSentPerSecond =
+        ((DOUBLE)(this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesSent -
+                  (DOUBLE) this->canaryOutgoingRTPMetricsContext.prevFramesSent)) /
+        (DOUBLE) currentDuration;
+
+    this->canaryOutgoingRTPMetricsContext.prevFramesSent = this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesSent;
+    this->canaryOutgoingRTPMetricsContext.prevTs = this->canaryMetrics.timestamp;
+    this->canaryOutgoingRTPMetricsContext.prevFramesDiscardedOnSend = this->canaryMetrics.rtcStatsObject.outboundRtpStreamStats.framesDiscardedOnSend;
+    DLOGD("Frames discard percent: %lf", this->canaryOutgoingRTPMetricsContext.framesPercentageDiscarded);
+    DLOGD("Average frame rate: %lf", this->canaryOutgoingRTPMetricsContext.averageFramesSentPerSecond);
 CleanUp:
-   return retStatus;
+    return retStatus;
+}
+
+STATUS Peer::publishStatsForCanary()
+{
+    STATUS retStatus = STATUS_SUCCESS;
+    switch (this->canaryMetrics.requestedTypeOfStats) {
+        case RTC_STATS_TYPE_OUTBOUND_RTP:
+            CHK_LOG_ERR(::rtcPeerConnectionGetMetrics(this->pPeerConnection, this->videoTransceivers.back(), &this->canaryMetrics));
+            this->populateOutgoingRtpMetricsContext();
+            Canary::Cloudwatch::getInstance().monitoring.pushOutboundRtpStats(&this->canaryOutgoingRTPMetricsContext);
+            break;
+        default:
+            CHK(FALSE, STATUS_NOT_IMPLEMENTED);
+    }
+CleanUp:
+    return retStatus;
 }
 } // namespace Canary

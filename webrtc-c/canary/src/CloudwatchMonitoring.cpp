@@ -10,9 +10,13 @@ STATUS CloudwatchMonitoring::init()
 {
     STATUS retStatus = STATUS_SUCCESS;
 
-    this->channelDimension.SetName("Channel");
-    this->channelDimension.SetValue(pConfig->pChannelName);
-
+    this->channelDimension.SetName(pConfig->pChannelName);
+    if(pConfig->isMaster) {
+        this->channelDimension.SetValue("Master");
+    }
+    else {
+        this->channelDimension.SetValue("Viewer");
+    }
     return retStatus;
 }
 

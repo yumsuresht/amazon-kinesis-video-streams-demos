@@ -28,8 +28,10 @@ typedef struct {
     UINT64 prevPacketsReceived;
     UINT64 prevTs;
     UINT64 prevBytesReceived;
+    UINT64 prevFramesDropped;
     DOUBLE packetReceiveRate;
     DOUBLE incomingBitRate;
+    DOUBLE framesDroppedPerSecond;
 } IncomingRTPMetricsContext;
 typedef IncomingRTPMetricsContext* PIncomingRTPMetricsContext;
 

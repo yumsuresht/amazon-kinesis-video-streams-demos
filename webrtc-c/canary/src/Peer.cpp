@@ -26,6 +26,7 @@ STATUS Peer::init()
     this->canaryOutgoingRTPMetricsContext.prevFramesSent = 0;
     this->canaryIncomingRTPMetricsContext.prevPacketsReceived = 0;
     this->canaryIncomingRTPMetricsContext.prevBytesReceived = 0;
+    this->canaryIncomingRTPMetricsContext.prevFramesDropped = 0;
     this->canaryIncomingRTPMetricsContext.prevTs = GETTIME();
 
     CHK_STATUS(createStaticCredentialProvider((PCHAR) pConfig->pAccessKey, 0, (PCHAR) pConfig->pSecretKey, 0, (PCHAR) pConfig->pSessionToken, 0,
@@ -609,13 +610,16 @@ STATUS Peer::populateIncomingRtpMetricsContext()
     DLOGD("duration:%lf", currentDuration);
     this->canaryIncomingRTPMetricsContext.packetReceiveRate = (DOUBLE) (this->canaryMetrics.rtcStatsObject.inboundRtpStreamStats.received.packetsReceived - this->canaryIncomingRTPMetricsContext.prevPacketsReceived) / currentDuration;
     this->canaryIncomingRTPMetricsContext.incomingBitRate = ((DOUBLE) (this->canaryMetrics.rtcStatsObject.inboundRtpStreamStats.bytesReceived - this->canaryIncomingRTPMetricsContext.prevBytesReceived) * 8.0) / currentDuration;
+    this->canaryIncomingRTPMetricsContext.framesDroppedPerSecond = ((DOUBLE) this->canaryMetrics.rtcStatsObject.inboundRtpStreamStats.received.framesDropped - this->canaryIncomingRTPMetricsContext.prevFramesDropped) / currentDuration;
 
     this->canaryIncomingRTPMetricsContext.prevPacketsReceived = this->canaryMetrics.rtcStatsObject.inboundRtpStreamStats.received.packetsReceived;
     this->canaryIncomingRTPMetricsContext.prevBytesReceived = this->canaryMetrics.rtcStatsObject.inboundRtpStreamStats.bytesReceived;
+    this->canaryIncomingRTPMetricsContext.prevFramesDropped = this->canaryMetrics.rtcStatsObject.inboundRtpStreamStats.received.framesDropped;
     this->canaryIncomingRTPMetricsContext.prevTs = this->canaryMetrics.timestamp;
 
     DLOGD("Packet receive rate: %lf", this->canaryIncomingRTPMetricsContext.packetReceiveRate);
     DLOGD("Incoming bit rate: %lf", this->canaryIncomingRTPMetricsContext.incomingBitRate / 1024.0);
+    DLOGD("Frame drop rate: %lf", this->canaryIncomingRTPMetricsContext.framesDroppedPerSecond);
 CleanUp:
     return retStatus;
 }

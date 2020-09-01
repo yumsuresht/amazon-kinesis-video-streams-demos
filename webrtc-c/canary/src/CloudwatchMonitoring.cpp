@@ -125,4 +125,9 @@ VOID CloudwatchMonitoring::pushOutboundRtpStats(Canary::POutgoingRTPMetricsConte
     this->push(retransmissionPercentDatum);
 }
 
+VOID CloudwatchMonitoring::pushInboundRtpStats(Canary::PIncomingRTPMetricsContext pIncomingRTPMetricsContext)
+{
+
+}
+
 } // namespace Canary

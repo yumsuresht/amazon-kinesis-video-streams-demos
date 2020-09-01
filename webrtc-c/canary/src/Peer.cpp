@@ -24,6 +24,9 @@ STATUS Peer::init()
     this->canaryOutgoingRTPMetricsContext.prevNackCount = 0;
     this->canaryOutgoingRTPMetricsContext.prevRetxBytesSent = 0;
     this->canaryOutgoingRTPMetricsContext.prevFramesSent = 0;
+    this->canaryIncomingRTPMetricsContext.prevPacketsReceived = 0;
+    this->canaryIncomingRTPMetricsContext.prevBytesReceived = 0;
+    this->canaryIncomingRTPMetricsContext.prevTs = GETTIME();
 
     CHK_STATUS(createStaticCredentialProvider((PCHAR) pConfig->pAccessKey, 0, (PCHAR) pConfig->pSecretKey, 0, (PCHAR) pConfig->pSessionToken, 0,
                                               MAX_UINT64, &pAwsCredentialProvider));
@@ -276,7 +279,6 @@ STATUS Peer::initPeerConnection()
 
     STATUS retStatus = STATUS_SUCCESS;
     CHK(this->pPeerConnection == NULL, STATUS_INVALID_OPERATION);
-
     CHK_STATUS(createPeerConnection(&this->rtcConfiguration, &this->pPeerConnection));
     CHK_STATUS(peerConnectionOnIceCandidate(this->pPeerConnection, (UINT64) this, handleOnIceCandidate));
     CHK_STATUS(peerConnectionOnConnectionStateChange(this->pPeerConnection, (UINT64) this, onConnectionStateChange));
@@ -599,6 +601,24 @@ CleanUp:
     return retStatus;
 }
 
+STATUS Peer::populateIncomingRtpMetricsContext()
+{
+    STATUS retStatus;
+    DOUBLE currentDuration = 0;
+    currentDuration = (DOUBLE)(this->canaryMetrics.timestamp - this->canaryIncomingRTPMetricsContext.prevTs) / HUNDREDS_OF_NANOS_IN_A_SECOND;
+    DLOGD("duration:%lf", currentDuration);
+    this->canaryIncomingRTPMetricsContext.packetReceiveRate = (DOUBLE) (this->canaryMetrics.rtcStatsObject.inboundRtpStreamStats.received.packetsReceived - this->canaryIncomingRTPMetricsContext.prevPacketsReceived) / currentDuration;
+    this->canaryIncomingRTPMetricsContext.incomingBitRate = ((DOUBLE) (this->canaryMetrics.rtcStatsObject.inboundRtpStreamStats.bytesReceived - this->canaryIncomingRTPMetricsContext.prevBytesReceived) * 8.0) / currentDuration;
+
+    this->canaryIncomingRTPMetricsContext.prevPacketsReceived = this->canaryMetrics.rtcStatsObject.inboundRtpStreamStats.received.packetsReceived;
+    this->canaryIncomingRTPMetricsContext.prevBytesReceived = this->canaryMetrics.rtcStatsObject.inboundRtpStreamStats.bytesReceived;
+    this->canaryIncomingRTPMetricsContext.prevTs = this->canaryMetrics.timestamp;
+
+    DLOGD("Packet receive rate: %lf", this->canaryIncomingRTPMetricsContext.packetReceiveRate);
+    DLOGD("Incoming bit rate: %lf", this->canaryIncomingRTPMetricsContext.incomingBitRate / 1024.0);
+CleanUp:
+    return retStatus;
+}
 STATUS Peer::publishStatsForCanary()
 {
     STATUS retStatus = STATUS_SUCCESS;
@@ -607,6 +627,12 @@ STATUS Peer::publishStatsForCanary()
             CHK_LOG_ERR(::rtcPeerConnectionGetMetrics(this->pPeerConnection, this->videoTransceivers.back(), &this->canaryMetrics));
             this->populateOutgoingRtpMetricsContext();
             Canary::Cloudwatch::getInstance().monitoring.pushOutboundRtpStats(&this->canaryOutgoingRTPMetricsContext);
+            break;
+        case RTC_STATS_TYPE_INBOUND_RTP:
+            CHK_LOG_ERR(::rtcPeerConnectionGetMetrics(this->pPeerConnection, this->videoTransceivers.back(), &this->canaryMetrics));
+            this->populateIncomingRtpMetricsContext();
+            Canary::Cloudwatch::getInstance().monitoring.pushInboundRtpStats(&this->canaryIncomingRTPMetricsContext);
+
             break;
         default:
             CHK(FALSE, STATUS_NOT_IMPLEMENTED);

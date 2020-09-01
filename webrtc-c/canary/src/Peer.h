@@ -24,6 +24,15 @@ typedef struct {
 } OutgoingRTPMetricsContext;
 typedef OutgoingRTPMetricsContext* POutgoingRTPMetricsContext;
 
+typedef struct {
+    UINT64 prevPacketsReceived;
+    UINT64 prevTs;
+    UINT64 prevBytesReceived;
+    DOUBLE packetReceiveRate;
+    DOUBLE incomingBitRate;
+} IncomingRTPMetricsContext;
+typedef IncomingRTPMetricsContext* PIncomingRTPMetricsContext;
+
 class Peer {
   public:
     struct Callbacks {
@@ -71,6 +80,7 @@ class Peer {
     UINT64 iceHolePunchingStartTime;
     RtcStats canaryMetrics;
     OutgoingRTPMetricsContext canaryOutgoingRTPMetricsContext;
+    IncomingRTPMetricsContext canaryIncomingRTPMetricsContext;
 
     STATUS initSignaling();
     STATUS initRtcConfiguration();
@@ -79,6 +89,7 @@ class Peer {
     STATUS handleSignalingMsg(PReceivedSignalingMessage);
     STATUS send(PSignalingMessage);
     STATUS populateOutgoingRtpMetricsContext();
+    STATUS populateIncomingRtpMetricsContext();
 };
 
 } // namespace Canary

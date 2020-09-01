@@ -4,6 +4,7 @@ STATUS onNewConnection(Canary::PPeer);
 STATUS run(Canary::PConfig);
 VOID sendLocalFrames(Canary::PPeer, MEDIA_STREAM_TRACK_KIND, const std::string&, UINT64, UINT32);
 STATUS canaryRtpOutboundStats(UINT32, UINT64, UINT64);
+STATUS canaryRtpInboundStats(UINT32, UINT64, UINT64);
 
 std::atomic<bool> terminated;
 VOID handleSignal(INT32 signal)
@@ -94,6 +95,13 @@ STATUS run(Canary::PConfig pConfig)
 
         CHK_STATUS(timerQueueAddTimer(timerQueueHandle, METRICS_INVOCATION_PERIOD, METRICS_INVOCATION_PERIOD, canaryRtpOutboundStats, (UINT64) &peer,
                                       &timeoutTimerId));
+
+        if(!pConfig->isMaster) {
+            DLOGD("Viewer configuration");
+            CHK_STATUS(timerQueueAddTimer(timerQueueHandle, METRICS_INVOCATION_PERIOD, METRICS_INVOCATION_PERIOD, canaryRtpInboundStats, (UINT64) &peer,
+                                          &timeoutTimerId));
+
+        }
         videoThread.join();
         audioThread.join();
         CHK_STATUS(peer.shutdown());
@@ -151,8 +159,17 @@ STATUS canaryRtpOutboundStats(UINT32 timerId, UINT64 currentTime, UINT64 customD
 {
     STATUS retStatus = STATUS_SUCCESS;
     Canary::PPeer pPeer = (Canary::PPeer) customData;
-    RTC_STATS_TYPE statsRequested = pPeer->getStatsType();
     pPeer->setStatsType(RTC_STATS_TYPE_OUTBOUND_RTP);
+    pPeer->publishStatsForCanary();
+CleanUp:
+    return retStatus;
+}
+
+STATUS canaryRtpInboundStats(UINT32 timerId, UINT64 currentTime, UINT64 customData)
+{
+    STATUS retStatus = STATUS_SUCCESS;
+    Canary::PPeer pPeer = (Canary::PPeer) customData;
+    pPeer->setStatsType(RTC_STATS_TYPE_INBOUND_RTP);
     pPeer->publishStatsForCanary();
 CleanUp:
     return retStatus;

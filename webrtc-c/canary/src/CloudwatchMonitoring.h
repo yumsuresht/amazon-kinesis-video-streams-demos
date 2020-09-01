@@ -12,6 +12,7 @@ class CloudwatchMonitoring {
     VOID pushSignalingInitDelay(UINT64, StandardUnit);
     VOID pushICEHolePunchingDelay(UINT64, StandardUnit);
     VOID pushOutboundRtpStats(Canary::POutgoingRTPMetricsContext);
+    VOID pushInboundRtpStats(Canary::PIncomingRTPMetricsContext);
 
   private:
     Dimension channelDimension;

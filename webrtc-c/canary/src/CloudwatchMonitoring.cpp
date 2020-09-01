@@ -127,7 +127,7 @@ VOID CloudwatchMonitoring::pushOutboundRtpStats(Canary::POutgoingRTPMetricsConte
 
 VOID CloudwatchMonitoring::pushInboundRtpStats(Canary::PIncomingRTPMetricsContext pIncomingRtpStats)
 {
-    MetricDatum incomingBitrateDatum, incomingPacketRate;
+    MetricDatum incomingBitrateDatum, incomingPacketRate, incomingFrameDropRateDatum;
 
     incomingBitrateDatum.SetMetricName("IncomingBitRate");
     incomingBitrateDatum.SetValue(pIncomingRtpStats->incomingBitRate);
@@ -140,6 +140,12 @@ VOID CloudwatchMonitoring::pushInboundRtpStats(Canary::PIncomingRTPMetricsContex
     incomingPacketRate.SetUnit(StandardUnit::Count_Second);
     incomingPacketRate.AddDimensions(this->channelDimension);
     this->push(incomingPacketRate);
+
+    incomingFrameDropRateDatum.SetMetricName("IncomingFrameDropRate");
+    incomingFrameDropRateDatum.SetValue(pIncomingRtpStats->framesDroppedPerSecond);
+    incomingFrameDropRateDatum.SetUnit(StandardUnit::Count_Second);
+    incomingFrameDropRateDatum.AddDimensions(this->channelDimension);
+    this->push(incomingFrameDropRateDatum);
 }
 
 } // namespace Canary

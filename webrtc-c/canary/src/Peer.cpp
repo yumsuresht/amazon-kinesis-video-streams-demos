@@ -505,7 +505,11 @@ STATUS Peer::addTransceiver(RtcMediaStreamTrack& track)
     auto handleVideoFrame = [](UINT64 customData, PFrame pFrame) -> VOID {
         UNUSED_PARAM(customData);
         // Measure end to end latency here for every frame
-        DLOGD("Timestamp received: %llu\n", getUnalignedInt64BigEndian((PINT64)(pFrame->frameData)));
+        UINT64 ts = GETTIME();
+        UINT64 tsRx = getUnalignedInt64BigEndian((PINT64)(pFrame->frameData + pFrame->size - (UINT32)CANARY_METADATA_SIZE));
+        UINT32 size = getUnalignedInt32BigEndian((PINT32)(pFrame->frameData + pFrame->size - (UINT32)CANARY_METADATA_SIZE + SIZEOF(UINT64)));
+        UINT32 crc = getUnalignedInt32BigEndian((PINT32)(pFrame->frameData + pFrame->size - (UINT32)CANARY_METADATA_SIZE + SIZEOF(UINT64) + SIZEOF(UINT32)));
+        DLOGD("Latency: %lf, size: %u, crc: %u", (DOUBLE)(ts - tsRx) / HUNDREDS_OF_NANOS_IN_A_MILLISECOND, size, crc);
     };
 
     PRtcRtpTransceiver pTransceiver;
@@ -519,7 +523,7 @@ STATUS Peer::addTransceiver(RtcMediaStreamTrack& track)
         this->audioTransceivers.push_back(pTransceiver);
     }
 
-    CHK_STATUS(transceiverOnFrame(pTransceiver, (UINT64) this, handleFrame));
+//    CHK_STATUS(transceiverOnFrame(pTransceiver, (UINT64) this, handleFrame));
     CHK_STATUS(transceiverOnBandwidthEstimation(pTransceiver, (UINT64) this, handleBandwidthEstimation));
 
 CleanUp:

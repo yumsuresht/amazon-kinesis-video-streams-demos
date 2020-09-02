@@ -90,8 +90,8 @@ STATUS run(Canary::PConfig pConfig)
 
         std::thread videoThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_VIDEO, CANARY_VIDEO_FRAMES_PATH, NUMBER_OF_H264_FRAME_FILES,
                                 SAMPLE_VIDEO_FRAME_DURATION);
-        std::thread audioThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_AUDIO, CANARY_AUDIO_FRAMES_PATH, NUMBER_OF_OPUS_FRAME_FILES,
-                                SAMPLE_AUDIO_FRAME_DURATION);
+//        std::thread audioThread(sendLocalFrames, &peer, MEDIA_STREAM_TRACK_KIND_AUDIO, CANARY_AUDIO_FRAMES_PATH, NUMBER_OF_OPUS_FRAME_FILES,
+//                                SAMPLE_AUDIO_FRAME_DURATION);
 
         CHK_STATUS(timerQueueAddTimer(timerQueueHandle, METRICS_INVOCATION_PERIOD, METRICS_INVOCATION_PERIOD, canaryRtpOutboundStats, (UINT64) &peer,
                                       &timeoutTimerId));
@@ -99,7 +99,7 @@ STATUS run(Canary::PConfig pConfig)
                                       &timeoutTimerId));
 
         videoThread.join();
-        audioThread.join();
+//        audioThread.join();
         CHK_STATUS(peer.shutdown());
     }
 
@@ -173,22 +173,14 @@ CleanUp:
 
 VOID addCanaryMetadata(PFrame pFrame)
 {
-    PBYTE pCurPtr = pFrame->frameData;
-    putUnalignedInt64BigEndian((PINT64)pCurPtr, pFrame->presentationTs / HUNDREDS_OF_NANOS_IN_A_MILLISECOND);
+    PBYTE pCurPtr = pFrame->frameData + pFrame->size - (UINT32)CANARY_METADATA_SIZE;
+    putUnalignedInt64BigEndian((PINT64)pCurPtr, GETTIME());
     pCurPtr += SIZEOF(UINT64);
-    putUnalignedInt32BigEndian((PINT32)pCurPtr, pFrame->index);
+    putUnalignedInt32BigEndian((PINT32)pCurPtr, pFrame->size - (UINT32) CANARY_METADATA_SIZE);
     pCurPtr += SIZEOF(UINT32);
-    putUnalignedInt32BigEndian((PINT32)pCurPtr, pFrame->size - CANARY_METADATA_SIZE);
-    pCurPtr += SIZEOF(UINT32);
-    putUnalignedInt32BigEndian((PINT32)pCurPtr, COMPUTE_CRC32(pFrame->frameData, pFrame->size - CANARY_METADATA_SIZE));
-}
-
-VOID printFrame(PBYTE frameData, SIZE_T size)
-{
-    printf("Timestamp: %llu\n", getUnalignedInt64BigEndian((PINT64)(frameData)));
-//    printf("Index: %d\n", getUnalignedInt32BigEndian((PINT32)(frameData + SIZEOF(UINT64))));
-//    printf("Frame size: %d\n", getUnalignedInt32BigEndian((PINT32)(frameData + SIZEOF(UINT64) + SIZEOF(UINT32))));
-//    printf("Frame CRC: %u\n", getUnalignedInt32BigEndian((PINT32)(frameData + SIZEOF(UINT64) + SIZEOF(UINT32) + SIZEOF(UINT32))));
+    putUnalignedInt32BigEndian((PINT32)pCurPtr, COMPUTE_CRC32(pFrame->frameData, pFrame->size));
+    pCurPtr = pFrame->frameData + pFrame->size - (UINT32)CANARY_METADATA_SIZE;
+    DLOGD("size: %u, crc: %u", getUnalignedInt32BigEndian((PINT32)(pCurPtr + SIZEOF(UINT64))), getUnalignedInt32BigEndian((PINT32)(pCurPtr + SIZEOF(UINT64) + SIZEOF(UINT32))));
 }
 
 VOID sendLocalFrames(Canary::PPeer pPeer, MEDIA_STREAM_TRACK_KIND kind, const std::string& pattern, UINT64 frameCount, UINT32 frameDuration)
@@ -216,14 +208,12 @@ VOID sendLocalFrames(Canary::PPeer pPeer, MEDIA_STREAM_TRACK_KIND kind, const st
             frame.frameData = (PBYTE) REALLOC(frame.frameData, frameSize + CANARY_METADATA_SIZE);
             CHK_ERR(frame.frameData != NULL, STATUS_NOT_ENOUGH_MEMORY, "Failed to realloc media buffer");
         }
-        frame.size = (UINT32) frameSize + CANARY_METADATA_SIZE;
-        frame.index = fileIndex;
+        frame.size = (UINT32) (frameSize + CANARY_METADATA_SIZE);
         CHK_STATUS(readFile(filePath, TRUE, frame.frameData, &frameSize));
 
         frame.presentationTs += frameDuration;
         addCanaryMetadata(&frame);
 
-        printFrame(frame.frameData, CANARY_METADATA_SIZE);
         pPeer->writeFrame(&frame, kind);
 
         // Adjust sleep in the case the sleep itself and writeFrame take longer than expected. Since sleep makes sure that the thread

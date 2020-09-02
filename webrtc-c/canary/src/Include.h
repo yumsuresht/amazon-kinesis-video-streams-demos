@@ -35,7 +35,7 @@
 #define CANARY_AUDIO_FRAMES_PATH (PCHAR) "./assets/opusSampleFrames/sample-%03d.opus"
 
 #define METRICS_INVOCATION_PERIOD (60 * HUNDREDS_OF_NANOS_IN_A_SECOND)
-#define CANARY_METADATA_SIZE      (SIZEOF(INT64) + SIZEOF(UINT32) + SIZEOF(UINT32) + SIZEOF(UINT64))
+#define CANARY_METADATA_SIZE      (SIZEOF(UINT64) + SIZEOF(UINT32) + SIZEOF(UINT32))
 
 #include <aws/core/Aws.h>
 #include <aws/monitoring/CloudWatchClient.h>

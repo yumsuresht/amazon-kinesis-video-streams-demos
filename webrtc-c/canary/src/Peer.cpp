@@ -502,12 +502,19 @@ STATUS Peer::addTransceiver(RtcMediaStreamTrack& track)
         DLOGV("received bitrate suggestion: %f", maxiumBitrate);
     };
 
+    auto handleVideoFrame = [](UINT64 customData, PFrame pFrame) -> VOID {
+        UNUSED_PARAM(customData);
+        // Measure end to end latency here for every frame
+        DLOGD("Timestamp received: %llu\n", getUnalignedInt64BigEndian((PINT64)(pFrame->frameData)));
+    };
+
     PRtcRtpTransceiver pTransceiver;
     STATUS retStatus = STATUS_SUCCESS;
 
     CHK_STATUS(::addTransceiver(pPeerConnection, &track, NULL, &pTransceiver));
     if (track.kind == MEDIA_STREAM_TRACK_KIND_VIDEO) {
         this->videoTransceivers.push_back(pTransceiver);
+        CHK_STATUS(transceiverOnFrame(pTransceiver, (UINT64) this, handleVideoFrame));
     } else {
         this->audioTransceivers.push_back(pTransceiver);
     }
@@ -546,7 +553,10 @@ STATUS Peer::writeFrame(PFrame pFrame, MEDIA_STREAM_TRACK_KIND kind)
         this->canaryOutgoingRTPMetricsContext.videoBytesGenerated += pFrame->size;
     }
     for (auto& transceiver : transceivers) {
-        CHK_LOG_ERR(::writeFrame(transceiver, pFrame));
+        retStatus = ::writeFrame(transceiver, pFrame);
+        if(retStatus == STATUS_SRTP_NOT_READY_YET || retStatus == STATUS_SUCCESS) {
+            // do nothing
+        }
     }
 
 CleanUp:

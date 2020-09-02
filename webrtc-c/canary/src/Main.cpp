@@ -97,6 +97,7 @@ STATUS run(Canary::PConfig pConfig)
                                       &timeoutTimerId));
         CHK_STATUS(timerQueueAddTimer(timerQueueHandle, METRICS_INVOCATION_PERIOD, METRICS_INVOCATION_PERIOD, canaryRtpInboundStats, (UINT64) &peer,
                                       &timeoutTimerId));
+
         videoThread.join();
         audioThread.join();
         CHK_STATUS(peer.shutdown());
@@ -170,6 +171,26 @@ CleanUp:
     return retStatus;
 }
 
+VOID addCanaryMetadata(PFrame pFrame)
+{
+    PBYTE pCurPtr = pFrame->frameData;
+    putUnalignedInt64BigEndian((PINT64)pCurPtr, pFrame->presentationTs / HUNDREDS_OF_NANOS_IN_A_MILLISECOND);
+    pCurPtr += SIZEOF(UINT64);
+    putUnalignedInt32BigEndian((PINT32)pCurPtr, pFrame->index);
+    pCurPtr += SIZEOF(UINT32);
+    putUnalignedInt32BigEndian((PINT32)pCurPtr, pFrame->size - CANARY_METADATA_SIZE);
+    pCurPtr += SIZEOF(UINT32);
+    putUnalignedInt32BigEndian((PINT32)pCurPtr, COMPUTE_CRC32(pFrame->frameData, pFrame->size - CANARY_METADATA_SIZE));
+}
+
+VOID printFrame(PBYTE frameData, SIZE_T size)
+{
+    printf("Timestamp: %llu\n", getUnalignedInt64BigEndian((PINT64)(frameData)));
+//    printf("Index: %d\n", getUnalignedInt32BigEndian((PINT32)(frameData + SIZEOF(UINT64))));
+//    printf("Frame size: %d\n", getUnalignedInt32BigEndian((PINT32)(frameData + SIZEOF(UINT64) + SIZEOF(UINT32))));
+//    printf("Frame CRC: %u\n", getUnalignedInt32BigEndian((PINT32)(frameData + SIZEOF(UINT64) + SIZEOF(UINT32) + SIZEOF(UINT32))));
+}
+
 VOID sendLocalFrames(Canary::PPeer pPeer, MEDIA_STREAM_TRACK_KIND kind, const std::string& pattern, UINT64 frameCount, UINT32 frameDuration)
 {
     STATUS retStatus = STATUS_SUCCESS;
@@ -192,15 +213,17 @@ VOID sendLocalFrames(Canary::PPeer pPeer, MEDIA_STREAM_TRACK_KIND kind, const st
 
         // Re-alloc if needed
         if (frameSize > frame.size) {
-            frame.frameData = (PBYTE) REALLOC(frame.frameData, frameSize);
+            frame.frameData = (PBYTE) REALLOC(frame.frameData, frameSize + CANARY_METADATA_SIZE);
             CHK_ERR(frame.frameData != NULL, STATUS_NOT_ENOUGH_MEMORY, "Failed to realloc media buffer");
         }
-        frame.size = (UINT32) frameSize;
-
+        frame.size = (UINT32) frameSize + CANARY_METADATA_SIZE;
+        frame.index = fileIndex;
         CHK_STATUS(readFile(filePath, TRUE, frame.frameData, &frameSize));
 
         frame.presentationTs += frameDuration;
+        addCanaryMetadata(&frame);
 
+        printFrame(frame.frameData, CANARY_METADATA_SIZE);
         pPeer->writeFrame(&frame, kind);
 
         // Adjust sleep in the case the sleep itself and writeFrame take longer than expected. Since sleep makes sure that the thread
